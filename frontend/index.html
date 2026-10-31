@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Xponent — Restaurant Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo"><img src="/static/logo.png" alt="Xponent"><span>Xponent</span></div>
+    <nav class="nav" id="nav">
+      <a href="#" class="active" data-sec="dashboard"><span class="ico">🏠</span> Dashboard</a>
+      <a href="#" data-sec="ask"><span class="ico">💬</span> Ask a Question</a>
+      <a href="#" data-sec="orders"><span class="ico">🧾</span> Orders</a>
+    </nav>
+    <div class="side-foot">
+      <div class="acct">
+        <div class="av" id="avatar">R</div>
+        <div><div class="nm" id="acctName">Restaurant</div><div class="sub">Seller account</div></div>
+      </div>
+      <select id="seller" aria-label="Switch restaurant"></select>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="greet">
+        <h1 id="greeting">Welcome 👋</h1>
+        <p id="greetSub">Here's how your business is doing.</p>
+      </div>
+      <div class="top-ctrl">
+        <select class="select" id="range" aria-label="Date range">
+          <option value="last_7_days">Last 7 days</option>
+          <option value="last_30_days" selected>Last 30 days</option>
+          <option value="this_month">This month</option>
+          <option value="all_time">All time</option>
+        </select>
+        <button class="iconbtn" id="diagBtn" title="Diagnostics">⚙️</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section class="section on" id="sec-dashboard">
+      <div class="row kpis">
+        <div class="card kpi"><div class="k-top"><div class="plate">🛒</div><div class="k-title">Total orders</div></div>
+          <div><span class="k-val num" id="kpiOrders">—</span> <span class="delta up" id="dOrders"></span></div>
+          <div class="k-sub" id="kpiPeriod1"></div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate alt">💳</div><div class="k-title">Gross sales</div></div>
+          <div><span class="k-val num" id="kpiGross">—</span> <span class="delta up" id="dGross"></span></div>
+          <div class="k-sub" id="kpiPeriod2"></div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate">📊</div><div class="k-title">Net sales</div></div>
+          <div><span class="k-val num" id="kpiNet">—</span> <span class="delta up" id="dNet"></span></div>
+          <div class="k-sub" id="kpiPeriod3"></div></div>
+      </div>
+
+      <div class="row two">
+        <div class="card">
+          <h3>📈 Sales trend</h3>
+          <p class="csub" id="trendSub">Your daily net sales.</p>
+          <svg class="trend" id="trend" viewBox="0 0 600 210" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="card">
+          <h3>✨ Ask about your business</h3>
+          <p class="csub">Get instant answers about your restaurant.</p>
+          <div class="ask-bar">
+            <input id="qMini" placeholder='e.g. "Show my sales for last 7 days"'>
+            <button class="btn primary" id="runMini">▶ Run</button>
+          </div>
+          <div class="chips" id="chipsMini"></div>
+          <div class="answer small muted" id="ansMini"></div>
+        </div>
+      </div>
+
+      <div class="row two" style="margin-top:20px;">
+        <div class="card">
+          <h3>💡 Quick insights</h3>
+          <table><tbody id="insights"></tbody></table>
+        </div>
+        <div class="card">
+          <h3>🟢 Data status</h3>
+          <div id="dataStatus" class="small muted">Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ASK -->
+    <section class="section" id="sec-ask">
+      <div class="card">
+        <h3>✨ Ask about your business</h3>
+        <p class="csub">Type a question in plain English. Answers come from your live sales data.</p>
+        <div class="ask-bar">
+          <input id="q" placeholder='e.g. "Order status breakdown for the last 30 days"'>
+          <button class="btn primary" id="run">▶ Run</button>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="answer" id="answer"></div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <h3>🕑 Recent questions</h3>
+        <div id="recent" class="small muted">None yet.</div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section class="section" id="sec-orders">
+      <div class="card">
+        <h3>🧾 Orders</h3>
+        <p class="csub">Create, update or remove orders for your restaurant. Changes update your numbers live.</p>
+        <div class="formrow">
+          <input id="newAmount" type="number" min="1" placeholder="Amount (e.g. 25000 = ₹250)">
+          <button class="btn primary" id="createOrder">+ New order</button>
+          <span class="small muted" id="ordersMsg"></span>
+        </div>
+        <table><thead><tr><th>Order</th><th>Status</th><th class="num">Amount</th><th>Placed</th><th class="num">Actions</th></tr></thead>
+        <tbody id="ordersBody"></tbody></table>
+      </div>
+    </section>
+
+    <!-- DIAGNOSTICS (hidden; technical, for the hackathon) -->
+    <details class="diag" id="diag" style="display:none;">
+      <summary>Diagnostics (technical) — SQL, provider, data integrity</summary>
+      <div style="margin-top:12px;">
+        <div class="small muted">Last query engine / SQL</div>
+        <pre id="diagSql">—</pre>
+        <div class="small muted" style="margin-top:12px;">Data integrity (Receipts) — admin only</div>
+        <div class="formrow" style="margin-top:8px;">
+          <input id="adminKey" placeholder="admin key" value="">
+          <input id="reconDay" value="2026-07-02" style="width:120px">
+          <button class="btn sm" id="verify">Verify</button>
+          <button class="btn sm danger" id="repair">Repair day</button>
+        </div>
+        <pre id="diagRecon">—</pre>
+      </div>
+    </details>
+  </main>
+</div>
+
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xponent - Business Intelligence Dashboard</title>
+<!-- Tailwind CSS CDN with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              red: '#e53535',
+              darkRed: '#c8232c',
+              softPink: '#fdf2f2',
+              coralLight: '#ffebe9',
+            },
+            sidebar: {
+              DEFAULT: '#1c1e24',
+              hover: '#262932',
+              card: '#22252e',
+              border: '#2e323e',
+            },
+            canvas: '#f3f4f8',
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Styles for precise iconography and layout styling -->
+<style data-purpose="custom-styling">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f3f4f8;
+      color: #1f2937;
+    }
+    /* Subtle custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#f3f4f8] flex antialiased select-none">
+<!-- BEGIN: Sidebar -->
+<aside class="w-64 bg-[#1c1e24] text-slate-300 flex-shrink-0 flex flex-col justify-between p-4 min-h-screen border-r border-[#272a33]" data-purpose="sidebar">
+<div>
+<!-- Brand Header -->
+<div class="flex items-center gap-3 px-3 py-4 mb-3" data-purpose="brand-logo">
+<div class="relative w-7 h-7 flex items-center justify-center">
+<!-- Abstract Ribbon / Flame Red Icon -->
+<svg class="w-7 h-7" fill="none" viewbox="0 0 24 24">
+<path d="M5 4L11 12L5 20H9L15 12L9 4H5Z" fill="#ff4d4f"></path>
+<path d="M12 4L18 12L12 20H16L22 12L16 4H12Z" fill="#e53535"></path>
+</svg>
+</div>
+<span class="text-white text-xl font-bold tracking-tight">Xponent</span>
+</div>
+<!-- Navigation Links -->
+<nav class="space-y-1 text-sm font-medium" data-purpose="sidebar-navigation">
+<!-- Home (Active) -->
+<a class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-[#d92d3e] to-[#ec3f49] text-white font-semibold shadow-md shadow-red-950/20" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+          Home
+        </a>
+<!-- Ask a Question -->
+<a class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#252831] hover:text-white transition-colors text-slate-300" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+          Ask a Question
+        </a>
+<!-- Analytics -->
+<a class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#252831] hover:text-white transition-colors text-slate-300" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+          Analytics
+        </a>
+<!-- Data Health -->
+<a class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#252831] hover:text-white transition-colors text-slate-300" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+          Data Health
+        </a>
+<!-- Tenants -->
+<a class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#252831] hover:text-white transition-colors text-slate-300" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+          Tenants
+        </a>
+<!-- Settings -->
+<a class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-[#252831] hover:text-white transition-colors text-slate-300" href="#">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+          Settings
+        </a>
+</nav>
+</div>
+<!-- Need Help Card -->
+<div class="bg-[#242730] p-4 rounded-2xl border border-[#2e323e]" data-purpose="help-card">
+<div class="flex items-center gap-2 mb-1.5">
+<div class="w-5 h-5 rounded-full border border-red-500/70 text-red-400 text-xs font-semibold flex items-center justify-center">?</div>
+<span class="text-white text-xs font-semibold">Need help?</span>
+</div>
+<p class="text-[11px] leading-relaxed text-slate-400 mb-3">
+        Learn how to ask questions and read results.
+      </p>
+<button class="w-full bg-white text-gray-900 text-xs font-semibold py-1.5 px-3 rounded-full hover:bg-slate-100 transition shadow-sm">
+        View Guide
+      </button>
+</div>
+</aside>
+<!-- END: Sidebar -->
+<!-- BEGIN: Main Dashboard Content -->
+<main class="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto" data-purpose="main-dashboard-body">
+<!-- BEGIN: Top Bar -->
+<header class="flex flex-col md:flex-row md:items-center justify-between pb-6 gap-4" data-purpose="top-header">
+<!-- Title & Greeting -->
+<div>
+<h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          Good evening! <span>👋</span>
+</h1>
+<p class="text-xs md:text-sm text-gray-500 mt-1">
+          Explore your business data, ask questions in plain English, and see live results.
+        </p>
+</div>
+<!-- Tenant & Profile Controls -->
+<div class="flex items-center gap-3 self-start md:self-auto" data-purpose="tenant-profile-controls">
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-medium text-gray-400 mr-2 -mb-0.5">Restaurant (Tenant)</span>
+<div class="flex items-center gap-2">
+<!-- Restaurant Selector -->
+<button class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 text-xs font-semibold text-gray-800 shadow-sm hover:border-gray-300">
+<svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+              Restaurant #1
+              <svg class="w-3 h-3 text-gray-400 ml-1" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<!-- Scope Locked Pill -->
+<div class="flex items-center gap-1.5 bg-[#fee2e2]/60 text-[#dc2626] text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-[#fecaca]/70">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>Scope Locked</span>
+<svg class="w-3 h-3 text-red-400 cursor-pointer" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9"></circle>
+<path d="M12 8h.01M12 12v4" stroke-linecap="round"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- User Profile Avatar Button -->
+<button class="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm hover:border-gray-300 ml-1">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+</header>
+<!-- END: Top Bar -->
+<!-- BEGIN: Metric Cards Row -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5" data-purpose="metrics-row">
+<!-- Total Orders Card -->
+<div class="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-[#fee2e2]/70 flex items-center justify-center text-red-500 shrink-0">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<span class="text-xs font-semibold text-gray-500">Total Orders</span>
+<div class="text-2xl font-bold text-gray-900 tracking-tight mt-0.5">1,248</div>
+<span class="text-[11px] text-gray-400">Last 30 days</span>
+</div>
+</div>
+<!-- Gross Sales Card -->
+<div class="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<span class="text-xs font-semibold text-gray-500">Gross Sales</span>
+<div class="text-2xl font-bold text-gray-900 tracking-tight mt-0.5">₹3,42,500</div>
+<span class="text-[11px] text-gray-400">Last 30 days</span>
+</div>
+</div>
+<!-- Net Sales Card -->
+<div class="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm flex items-start gap-3">
+<div class="w-10 h-10 rounded-xl bg-[#fee2e2]/70 flex items-center justify-center text-red-500 shrink-0">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<span class="text-xs font-semibold text-gray-500">Net Sales</span>
+<div class="text-2xl font-bold text-gray-900 tracking-tight mt-0.5">₹3,08,250</div>
+<span class="text-[11px] text-gray-400">Last 30 days</span>
+</div>
+</div>
+<!-- Data is Fresh Status Card -->
+<div class="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-slate-500"></span>
+<span class="text-xs font-bold text-gray-800">Data is Fresh</span>
+</div>
+<svg class="w-3.5 h-3.5 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9"></circle>
+<path d="M12 8h.01M12 12v4" stroke-linecap="round"></path>
+</svg>
+</div>
+<p class="text-[10px] text-gray-400 mt-0.5 pl-3.5">Updated 0.1 seconds ago</p>
+</div>
+<div class="flex items-center justify-between text-[11px] text-gray-600 pt-2 border-t border-gray-50 mt-1">
+<div class="flex items-center gap-1">
+<span class="text-gray-400">⚡</span>
+<span>Last Query <strong class="text-gray-900 block font-semibold text-[11px]">62 ms</strong></span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-gray-400">🗄</span>
+<span>Data Source <span class="text-gray-500 block font-normal text-[10px]">Xponent summary store</span></span>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Metric Cards Row -->
+<!-- BEGIN: Ask a Question & Recent Questions Section -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5" data-purpose="query-section">
+<!-- Ask a Question (Left Card - Spans 2 cols) -->
+<div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col justify-between">
+<div>
+<!-- Title with sparkle -->
+<div class="flex items-center gap-2 mb-1">
+<span class="text-red-500 text-lg leading-none">✦</span>
+<h2 class="text-base font-bold text-gray-900">Ask a Question</h2>
+</div>
+<p class="text-xs text-gray-500 mb-4">Get answers about your restaurant in plain English.</p>
+<!-- Input Bar with Run Button -->
+<div class="relative flex items-center mb-4">
+<input class="w-full text-xs text-gray-700 bg-white border border-gray-200 rounded-full pl-4 pr-24 py-2.5 shadow-inner focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-400" readonly="" type="text" value='Try: "Show order count and net sales for the last 30 days"'/>
+<button class="absolute right-1 top-1 bottom-1 px-4 bg-gradient-to-r from-[#d92d3e] to-[#ec3f49] hover:from-[#c72636] hover:to-[#db323d] text-white text-xs font-semibold rounded-full flex items-center gap-1.5 shadow-sm transition">
+<svg class="w-3 h-3 fill-current" viewbox="0 0 24 24">
+<polygon points="5 3 19 12 5 21 5 3"></polygon>
+</svg>
+              Run
+            </button>
+</div>
+</div>
+<!-- Example Questions Chips -->
+<div>
+<span class="text-[11px] text-gray-500 block mb-2 font-medium">Example questions:</span>
+<div class="flex flex-wrap gap-2">
+<button class="bg-[#f8f9fa] hover:bg-gray-100 text-gray-700 text-xs px-3.5 py-1.5 rounded-full border border-gray-200/80 transition font-normal">
+              Show sales for the last 7 days
+            </button>
+<button class="bg-[#f8f9fa] hover:bg-gray-100 text-gray-700 text-xs px-3.5 py-1.5 rounded-full border border-gray-200/80 transition font-normal">
+              How many orders this month?
+            </button>
+<button class="bg-[#f8f9fa] hover:bg-gray-100 text-gray-700 text-xs px-3.5 py-1.5 rounded-full border border-gray-200/80 transition font-normal">
+              Compare gross and net sales
+            </button>
+</div>
+</div>
+</div>
+<!-- Recent Questions (Right Card - Spans 1 col) -->
+<div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-3">
+<svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9"></circle>
+<polyline points="12 7 12 12 15 15"></polyline>
+</svg>
+<h2 class="text-sm font-bold text-gray-900">Recent Questions</h2>
+</div>
+<div class="space-y-3">
+<!-- Item 1 -->
+<div class="flex items-start justify-between text-xs gap-2">
+<div class="flex items-start gap-2 text-gray-800">
+<svg class="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="line-clamp-2 text-[11px] leading-tight font-normal text-gray-700">Show Restaurant A order count and net sales for the last 30 days</span>
+</div>
+<span class="text-[10px] text-gray-400 shrink-0 font-medium">0s ago</span>
+</div>
+<!-- Item 2 -->
+<div class="flex items-start justify-between text-xs gap-2">
+<div class="flex items-start gap-2 text-gray-800">
+<svg class="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[11px] leading-tight font-normal text-gray-700">Show restaurant 2 sales last 7 days</span>
+</div>
+<span class="text-[10px] text-gray-400 shrink-0 font-medium">9s ago</span>
+</div>
+<!-- Item 3 -->
+<div class="flex items-start justify-between text-xs gap-2">
+<div class="flex items-start gap-2 text-gray-800">
+<svg class="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[11px] leading-tight font-normal text-gray-700">How many orders this month?</span>
+</div>
+<span class="text-[10px] text-gray-400 shrink-0 font-medium">2m ago</span>
+</div>
+</div>
+</div>
+<div class="text-right pt-3 mt-1">
+<a class="text-xs font-semibold text-red-600 hover:text-red-700 inline-flex items-center gap-1 transition" href="#">
+            View all questions →
+          </a>
+</div>
+</div>
+</section>
+<!-- END: Ask a Question & Recent Questions Section -->
+<!-- BEGIN: Last Result & Tips Section -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-4" data-purpose="results-section">
+<!-- Last Result Card (Left Card - Spans 2 cols) -->
+<div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col justify-between">
+<div>
+<!-- Header -->
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<h2 class="text-sm font-bold text-gray-900">Last Result</h2>
+</div>
+<span class="text-[11px] text-gray-400">a few seconds ago</span>
+</div>
+<!-- Metrics Table / Row -->
+<div class="grid grid-cols-5 gap-2 pb-4 border-b border-gray-100 items-baseline">
+<div>
+<span class="text-[11px] text-gray-500 block">Orders</span>
+<span class="text-base font-bold text-gray-900">1,248</span>
+</div>
+<div>
+<span class="text-[11px] text-gray-500 block">Gross Sales</span>
+<span class="text-base font-bold text-gray-900">₹3,42,500</span>
+</div>
+<div>
+<span class="text-[11px] text-gray-500 block">Net Sales</span>
+<span class="text-base font-bold text-gray-900">₹3,08,250</span>
+</div>
+<div>
+<span class="text-[11px] text-gray-500 block">Currency</span>
+<span class="text-sm font-bold text-gray-900">INR</span>
+</div>
+<div class="text-right">
+<span class="inline-flex items-center gap-1 bg-[#fee2e2]/60 text-red-600 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-red-200/50">
+                Illustrative data
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9"></circle>
+<path d="M12 8h.01M12 12v4" stroke-linecap="round"></path>
+</svg>
+</span>
+</div>
+</div>
+<!-- Execution Metadata Badges -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 text-xs">
+<!-- Provider -->
+<div class="flex items-center gap-2">
+<svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="3"></circle>
+<path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<div>
+<span class="text-[10px] text-gray-400 block font-medium">Provider</span>
+<span class="text-[11px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Ollama</span>
+</div>
+</div>
+<!-- Scope -->
+<div class="flex items-center gap-2">
+<svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24">
+<rect height="11" rx="2" ry="2" width="18" x="3" y="11"></rect>
+<path d="M7 11V7a5 5 0 0110 0v4"></path>
+</svg>
+<div>
+<span class="text-[10px] text-gray-400 block font-medium">Scope</span>
+<span class="text-[11px] text-gray-700 font-semibold bg-gray-100 px-1.5 py-0.5 rounded">Locked to Restaurant #1</span>
+</div>
+</div>
+<!-- Date Range -->
+<div class="flex items-center gap-2">
+<svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24">
+<rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+<line x1="16" x2="16" y1="2" y2="6"></line>
+<line x1="8" x2="8" y1="2" y2="6"></line>
+<line x1="3" x2="21" y1="10" y2="10"></line>
+</svg>
+<div>
+<span class="text-[10px] text-gray-400 block font-medium">Date Range</span>
+<span class="text-[11px] text-gray-700 font-medium">Oct 31, 2026 – Nov 30, 2026</span>
+</div>
+</div>
+<!-- Metric -->
+<div class="flex items-center gap-2">
+<svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24">
+<path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<div>
+<span class="text-[10px] text-gray-400 block font-medium">Metric</span>
+<span class="text-[11px] text-gray-700 font-medium">Summary (Orders &amp; Sales)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Collapsible Technical Details -->
+<div class="pt-2 mt-2 border-t border-gray-100">
+<button class="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium transition">
+<svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="font-semibold text-gray-900">Technical Details</span>
+<span class="text-gray-400 font-normal ml-1">Interpreted plan, generated SQL, execution time, and full freshness info</span>
+</button>
+</div>
+</div>
+<!-- Tip Card (Right Card - Spans 1 col) -->
+<div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col justify-start">
+<div class="flex items-center gap-2 mb-2">
+<span class="text-yellow-500 text-lg leading-none">💡</span>
+<h2 class="text-sm font-bold text-gray-900">Tip: Ask it like you'd ask a person</h2>
+</div>
+<p class="text-xs text-gray-500 mb-3">
+          Use simple, natural questions, for example:
+        </p>
+<ul class="space-y-2 text-xs text-gray-700">
+<li class="flex items-start gap-2">
+<span class="text-gray-400">•</span>
+<span>"Show sales for the last 7 days"</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="text-gray-400">•</span>
+<span>"What's the order count this month?"</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="text-gray-400">•</span>
+<span>"Compare gross and net sales"</span>
+</li>
+</ul>
+</div>
+</section>
+<!-- END: Last Result & Tips Section -->
+</main>
+<!-- END: Main Dashboard Content -->
+</body></html>

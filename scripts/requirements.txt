@@ -1,0 +1,5 @@
+# Xponent data + worker tooling dependencies (install into a local venv):
+#   python3 -m venv .venv && . .venv/bin/activate && pip install -r scripts/requirements.txt
+psycopg[binary]>=3.1,<4
+psycopg2-binary>=2.9     # logical-replication streaming in the CDC worker (wal2json transport)
+xxhash>=3.4

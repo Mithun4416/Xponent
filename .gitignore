@@ -1,0 +1,7 @@
+# Xponent
+.env
+.venv/
+__pycache__/
+*.pyc
+results/
+*.log

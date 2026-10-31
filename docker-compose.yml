@@ -1,0 +1,160 @@
+# Xponent — single-laptop deployment (48h hackathon).
+# This foundation brings up the two PostgreSQL instances + Redis, each with its
+# schema applied on first boot. The cdc-worker and agg-api services are defined
+# as commented blocks below and are enabled once their code lands (tasks T4/T7).
+#
+# CPU/memory limits are load-bearing for the "DB safety" benchmark (NFR-005):
+# the summary/worker/API containers must NOT steal the primary's reserved cores.
+# `docker compose` (v2) honors deploy.resources.limits. NOTE: on Docker Desktop
+# (macOS/Windows) cgroup enforcement runs inside a VM and differs from native
+# Linux — verify caps with `docker inspect` before trusting any safety number.
+
+services:
+  pg-primary:
+    build:
+      context: ./db/primary # PostgreSQL 16 + wal2json (decision D6)
+      dockerfile: Dockerfile
+    container_name: xpo-pg-primary
+    environment:
+      POSTGRES_DB: primary_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: primary_password
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_replication_slots=4"
+      - "-c"
+      - "max_wal_senders=4"
+      - "-c"
+      - "max_slot_wal_keep_size=2048MB" # bound WAL so a stalled consumer can't fill disk (RSK-001)
+      - "-c"
+      - "shared_buffers=1024MB"
+      - "-c"
+      - "output_plugin_libraries=pgoutput,test_decoding,wal2json" # add wal2json to the output-plugin whitelist (D6)
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+      - ./db/primary:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d primary_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4096M
+    networks: [ agg-net ]
+
+  pg-summary:
+    image: postgres:16-alpine
+    container_name: xpo-pg-summary
+    environment:
+      POSTGRES_DB: agg_db
+      POSTGRES_USER: agg_user
+      POSTGRES_PASSWORD: agg_password
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=512MB"
+      - "-c"
+      - "synchronous_commit=off" # throughput; durability recovered via idempotent LSN replay
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_summary_data:/var/lib/postgresql/data
+      - ./db/summary:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U agg_user -d agg_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2048M
+    networks: [ agg-net ]
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: xpo-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    networks: [ agg-net ]
+
+  # --- CDC worker (task T4) --------------------------------------------------
+  # NOTE: start AFTER running the bootstrap (worker.bootstrap) so the slot + L0
+  # checkpoint exist; otherwise the worker has nothing to resume from.
+  cdc-worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: xpo-cdc-worker
+    depends_on:
+      pg-primary: { condition: service_healthy }
+      pg-summary: { condition: service_healthy }
+    environment:
+      PRIMARY_DB_URL: "postgresql://postgres:primary_password@pg-primary:5432/primary_db"
+      SUMMARY_DB_URL: "postgresql://agg_user:agg_password@pg-summary:5432/agg_db"
+      CDC_SLOT_NAME: "agg_slot"
+      # Per-tenant-database topology: uncomment to stream one slot per tenant DB.
+      # (default unset = single shared source). Provision the DBs first:
+      #   python3 scripts/provision_tenant_dbs.py --admin-dsn .../postgres --dbs tenant_1,tenant_2
+      TENANT_SOURCES: '[{"tenant_id":1,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_1","slot":"agg_slot_t1"},{"tenant_id":2,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_2","slot":"agg_slot_t2"}]'
+    restart: on-failure
+    deploy: { resources: { limits: { cpus: "1.0", memory: 1024M } } }
+    networks: [ agg-net ]
+
+  # --- Query API (task T7) ---------------------------------------------------
+  # --- Query API (task T7) ---------------------------------------------------
+  agg-api:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: xpo-agg-api
+    depends_on:
+      pg-summary: { condition: service_healthy }
+      redis-cache: { condition: service_healthy }
+    ports: [ "8000:8000" ]
+    environment:
+      SUMMARY_DB_URL: "postgresql://agg_reader:agg_reader_pass@pg-summary:5432/agg_db" # reader role (RLS-constrained)
+      SUMMARY_DB_OWNER_URL: "postgresql://agg_user:agg_password@pg-summary:5432/agg_db" # owner — admin Receipts repair only
+      PRIMARY_DB_URL: "postgresql://replication_reader:rep_pass@pg-primary:5432/primary_db"
+      REDIS_URL: "redis://redis-cache:6379/0"
+      AUTH_DEV_MODE: "true"
+      ADMIN_KEY: "xpo-admin-dev"
+      # NL query provider: ollama (local Gemma, no key) | anthropic | rules
+      NLQ_PROVIDER: "${NLQ_PROVIDER:-ollama}"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-gemma3}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}" # only used when NLQ_PROVIDER=anthropic
+      NLQ_MODEL: "claude-haiku-5-5"
+      # Must match the worker's TENANT_SOURCES so verify/repair/edge reads hit the right tenant DB.
+      TENANT_SOURCES: '[{"tenant_id":1,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_1","slot":"agg_slot_t1"},{"tenant_id":2,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_2","slot":"agg_slot_t2"}]'
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # lets the container reach host Ollama on Linux
+    deploy: { resources: { limits: { cpus: "1.0", memory: 1024M } } }
+    networks: [ agg-net ]
+
+networks:
+  agg-net:
+    driver: bridge
+
+volumes:
+  pg_primary_data:
+  pg_summary_data:

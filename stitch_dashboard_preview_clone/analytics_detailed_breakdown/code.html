@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "inverse-on-surface": "#ecf1ff", "on-primary-container": "#fffbff", "on-tertiary": "#ffffff", "tertiary-fixed-dim": "#ffb3ae", "on-primary": "#ffffff", "surface-container-high": "#e3e8f7", "on-secondary-container": "#61626b", "error-container": "#ffdad6", "on-primary-fixed-variant": "#930014", "on-secondary-fixed-variant": "#45464e", "on-surface": "#161c26", "error": "#ba1a1a", "surface-bright": "#f9f9ff", "inverse-primary": "#ffb3ae", "on-tertiary-fixed": "#410005", "primary-fixed": "#ffdad7", "surface-container-highest": "#dde2f1", "surface-container-low": "#f0f3ff", "outline": "#906f6d", "background": "#f9f9ff", "on-primary-fixed": "#410004", "surface-tint": "#bb1522", "secondary-container": "#dfdfe9", "primary-container": "#dc3135", "secondary": "#5c5e66", "primary-fixed-dim": "#ffb3ae", "on-secondary": "#ffffff", "primary": "#b81120", "on-background": "#161c26", "outline-variant": "#e4bdba", "surface-container-lowest": "#ffffff", "secondary-fixed-dim": "#c5c6d0", "on-error-container": "#93000a", "on-surface-variant": "#5b403e", "tertiary": "#b71423", "surface": "#f9f9ff", "inverse-surface": "#2b313c", "tertiary-fixed": "#ffdad7", "tertiary-container": "#db3239", "on-secondary-fixed": "#191b22", "surface-container": "#e8eefd", "on-tertiary-fixed-variant": "#930016", "surface-variant": "#dde2f1", "secondary-fixed": "#e2e2ec", "on-error": "#ffffff", "surface-dim": "#d4dae9", "on-tertiary-container": "#fffbff" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "1rem", "space-lg": "1.25rem", "gutter-mobile": "0.75rem", "gutter": "1.25rem", "space-xs": "0.25rem", "space-2xl": "2.5rem", "margin": "1.5rem", "space-md": "0.875rem", "space-xl": "1.75rem", "space-sm": "0.5rem" }, "fontFamily": { "body-sm": ["Inter"], "label-sm": ["Inter"], "label-md": ["Inter"], "body-lg": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "headline-xl": ["Inter"], "headline-lg": ["Inter"], "headline-sm": ["Inter"], "kpi-value": ["Inter"] }, "fontSize": { "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "body-md": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "headline-xl": ["28px", { "lineHeight": "36px", "fontWeight": "700" }], "headline-lg": ["22px", { "lineHeight": "30px", "fontWeight": "700" }], "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "kpi-value": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }] } } } };</script></head><body class="bg-surface-container-low font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-inverse-surface z-50 flex flex-col justify-between p-space-lg select-none"><div class="flex flex-col gap-space-xl"><div class="flex items-center gap-space-sm px-space-xs"><div class="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center font-headline-md text-headline-md font-bold text-on-surface"><span class="text-primary">X</span></div><div class="flex items-center"><span class="font-headline-md text-headline-md font-bold text-inverse-on-surface tracking-tight">Xponent</span><span class="font-headline-md text-headline-md font-bold text-primary ml-0.5">.AI</span></div></div><nav class="flex flex-col gap-space-xs" data-active-classes="bg-primary text-on-primary font-bold shadow-[0_4px_14px_0_rgba(184,17,32,0.35)]"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-secondary-fixed-dim hover:bg-surface-container-highest/10 hover:text-inverse-on-surface transition-all" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">home</span><span class="font-label-md text-label-md">Home</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-secondary-fixed-dim hover:bg-surface-container-highest/10 hover:text-inverse-on-surface transition-all" data-path="ask-a-question" href="#"><span class="material-symbols-outlined text-[20px]">chat_bubble</span><span class="font-label-md text-label-md">Ask a Question</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg transition-all bg-primary text-on-primary font-bold shadow-[0_4px_14px_0_rgba(184,17,32,0.35)]" data-path="analytics" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span><span class="font-label-md text-label-md">Analytics</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-secondary-fixed-dim hover:bg-surface-container-highest/10 hover:text-inverse-on-surface transition-all" data-path="data-health" href="#"><span class="material-symbols-outlined text-[20px]">monitoring</span><span class="font-label-md text-label-md">Data Health</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-secondary-fixed-dim hover:bg-surface-container-highest/10 hover:text-inverse-on-surface transition-all" data-path="tenants" href="#"><span class="material-symbols-outlined text-[20px]">storefront</span><span class="font-label-md text-label-md">Tenants</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-secondary-fixed-dim hover:bg-surface-container-highest/10 hover:text-inverse-on-surface transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-label-md text-label-md">Settings</span></a></nav></div><div class="bg-surface-container-highest/10 rounded-xl p-space-md flex flex-col gap-space-xs"><div class="flex items-center gap-space-xs text-primary-fixed"><span class="material-symbols-outlined text-[18px]">help</span><span class="font-label-md text-label-md font-semibold text-inverse-on-surface">Need help?</span></div><p class="font-body-sm text-body-sm text-secondary-fixed-dim">Learn how to ask questions and read results.</p><a class="font-label-sm text-label-sm text-primary-fixed hover:text-inverse-on-surface font-semibold mt-space-xs transition-colors flex items-center gap-space-xs" data-path="guide" href="#">View Guide <span class="material-symbols-outlined text-[14px]">arrow_forward</span></a></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-xl"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs bg-surface-container-low px-space-md py-space-xs rounded-lg text-on-surface"><span class="material-symbols-outlined text-[18px] text-secondary">restaurant</span><span class="font-label-md text-label-md font-semibold">Restaurant #1</span><span class="material-symbols-outlined text-[16px] text-secondary ml-space-xs">expand_more</span></div><div class="flex items-center gap-space-xs bg-primary-fixed text-on-primary-fixed-variant px-space-sm py-0.5 rounded-full"><span class="material-symbols-outlined text-[14px]">lock</span><span class="font-label-sm text-label-sm uppercase font-bold tracking-wider">Scope Locked</span></div></div><div class="flex items-center gap-space-md"><button class="w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-16 bg-surface-container-low min-h-screen w-full px-space-xl py-space-xl"><div class="flex flex-col w-full">
+<!-- Page Header & Action Controls -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg mb-space-xl">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Analytics & Sales Breakdown</h1>
+<span class="text-[22px]">📊</span>
+</div>
+<p class="font-body-md text-body-md text-secondary">
+        In-depth performance metrics, revenue trajectories, category splits, and peak hour insights for Restaurant #1.
+      </p>
+</div>
+<!-- Right Controls: Date Range, Export, AI Trigger -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<!-- Date Filter Pills -->
+<div class="flex items-center bg-surface-container-lowest shadow-sm rounded-xl p-1 gap-0.5">
+<button class="px-space-md py-1.5 rounded-lg font-label-md text-label-md text-secondary hover:text-on-surface hover:bg-surface-container transition-all">Today</button>
+<button class="px-space-md py-1.5 rounded-lg font-label-md text-label-md text-secondary hover:text-on-surface hover:bg-surface-container transition-all">Last 7 Days</button>
+<button class="px-space-md py-1.5 rounded-lg font-label-md text-label-md bg-primary text-on-primary font-bold shadow-[0_4px_14px_0_rgba(184,17,32,0.35)] transition-all">Last 30 Days</button>
+<button class="px-space-md py-1.5 rounded-lg font-label-md text-label-md text-secondary hover:text-on-surface hover:bg-surface-container transition-all flex items-center gap-1">
+<span>Custom</span>
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+</button>
+</div>
+<!-- Action Buttons -->
+<div class="flex items-center gap-space-xs">
+<button class="flex items-center gap-1.5 bg-surface-container-lowest hover:bg-surface-container text-on-surface px-space-md py-2 rounded-xl shadow-sm transition-all font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
+<span>Export</span>
+</button>
+<button class="flex items-center gap-1.5 bg-gradient-to-r from-primary to-primary-container text-on-primary px-space-md py-2 rounded-xl shadow-[0_4px_14px_0_rgba(184,17,32,0.35)] hover:opacity-95 transition-all font-label-md text-label-md font-bold">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+<span>Ask AI about report</span>
+</button>
+</div>
+</div>
+</div>
+<!-- KPI Row: 5 High-Density Analytic Metric Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-space-lg mb-space-xl">
+<!-- Card 1: Gross Sales -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md font-medium text-secondary">Gross Revenue</span>
+<div class="w-8 h-8 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+</div>
+</div>
+<div>
+<div class="font-kpi-value text-kpi-value text-on-surface tracking-tight">₹3,42,500</div>
+<div class="flex items-center gap-1.5 mt-1.5">
+<span class="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-[13px] mr-0.5">trending_up</span>+14.2%
+          </span>
+<span class="font-body-sm text-body-sm text-secondary">vs prev 30d</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Net Revenue -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md font-medium text-secondary">Net Revenue</span>
+<div class="w-8 h-8 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</div>
+</div>
+<div>
+<div class="font-kpi-value text-kpi-value text-on-surface tracking-tight">₹3,08,250</div>
+<div class="flex items-center gap-1 text-[11px] text-secondary mt-1.5">
+<span>Gross less ₹34,250 discounts/tax</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Orders & AOV -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md font-medium text-secondary">Orders & AOV</span>
+<div class="w-8 h-8 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+</div>
+</div>
+<div>
+<div class="font-kpi-value text-kpi-value text-on-surface tracking-tight">1,248</div>
+<div class="flex items-center gap-1.5 mt-1.5">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">AOV ₹274.40</span>
+<span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">+4.8%</span>
+</div>
+</div>
+</div>
+<!-- Card 4: Dine-in vs Takeaway split -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-md text-label-md font-medium text-secondary">Dine-in / Delivery</span>
+<div class="w-8 h-8 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">pie_chart</span>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-1.5">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">68% <span class="font-body-sm text-body-sm font-normal text-secondary">Dine-in</span></span>
+<span class="font-label-sm text-label-sm font-semibold text-secondary">32% Online</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container flex overflow-hidden">
+<div class="bg-primary h-full" style="width: 68%;"></div>
+<div class="bg-secondary h-full" style="width: 32%;"></div>
+</div>
+<div class="flex justify-between text-[11px] text-secondary mt-1">
+<span>₹2.10L</span>
+<span>₹98.2K</span>
+</div>
+</div>
+</div>
+<!-- Card 5: Real-time freshness badge & Telemetry -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="font-label-sm text-label-sm font-bold text-on-surface">Live Sync Active</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-secondary">info</span>
+</div>
+<div>
+<div class="text-[11px] text-secondary mb-1">Pipeline Telemetry</div>
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface mb-1">
+<span>Query Latency</span>
+<span class="font-bold text-primary">48 ms</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-secondary">
+<span>Engine</span>
+<span class="font-semibold text-on-surface">Ollama SQL-V2</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Primary Analytics Section: 2/3 Chart + 1/3 Category Breakdown -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg mb-space-xl">
+<!-- Left: Sales & Order Trajectory Chart (8 cols) -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Sales & Order Volume Trajectory</h2>
+<p class="font-body-sm text-body-sm text-secondary">Daily performance peaks over the selected 30-day window</p>
+</div>
+<!-- Toggle Pill between Revenue & Orders -->
+<div class="flex items-center bg-surface-container-low rounded-xl p-1 gap-1 self-start sm:self-auto">
+<button class="px-space-md py-1 rounded-lg font-label-sm text-label-sm bg-surface-container-lowest text-on-surface font-bold shadow-sm transition-all" id="toggle-revenue">Revenue (₹)</button>
+<button class="px-space-md py-1 rounded-lg font-label-sm text-label-sm text-secondary hover:text-on-surface transition-all" id="toggle-orders">Order Count</button>
+</div>
+</div>
+<!-- Trajectory Metric Legend / Context Banner -->
+<div class="flex flex-wrap items-center gap-space-lg bg-surface-container-low/70 rounded-xl px-space-md py-space-sm mb-space-md">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="font-label-sm text-label-sm text-secondary">Daily Gross Revenue</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-secondary-fixed-dim"></div>
+<span class="font-label-sm text-label-sm text-secondary">Prior Period Baseline</span>
+</div>
+<div class="ml-auto flex items-center gap-1.5 text-primary font-label-sm text-label-sm font-semibold">
+<span class="material-symbols-outlined text-[16px]">hotel_class</span>
+<span>Peak: Sat, Nov 25 (₹18,450)</span>
+</div>
+</div>
+<!-- Interactive SVG Chart Area -->
+<div class="relative w-full h-72">
+<svg class="w-full h-full" fill="none" preserveaspectratio="none" viewbox="0 0 760 260">
+<defs>
+<lineargradient id="revenueGlow" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#b81120" stop-opacity="0.22"></stop>
+<stop offset="100%" stop-color="#b81120" stop-opacity="0.00"></stop>
+</lineargradient>
+<lineargradient id="barGlow" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#dc3135"></stop>
+<stop offset="100%" stop-color="#ffdad7"></stop>
+</lineargradient>
+</defs>
+<!-- Horizontal Gridlines -->
+<line stroke="#e8eefd" stroke-dasharray="4 4" stroke-width="1" x1="20" x2="740" y1="30" y2="30"></line>
+<line stroke="#e8eefd" stroke-dasharray="4 4" stroke-width="1" x1="20" x2="740" y1="80" y2="80"></line>
+<line stroke="#e8eefd" stroke-dasharray="4 4" stroke-width="1" x1="20" x2="740" y1="130" y2="130"></line>
+<line stroke="#e8eefd" stroke-dasharray="4 4" stroke-width="1" x1="20" x2="740" y1="180" y2="180"></line>
+<line stroke="#dde2f1" stroke-width="1.2" x1="20" x2="740" y1="230" y2="230"></line>
+<!-- Background Baseline Comparison Wave -->
+<path d="M 20 180 Q 90 190, 160 170 T 300 160 T 440 140 T 580 150 T 720 120" fill="none" opacity="0.6" stroke="#c5c6d0" stroke-dasharray="3 3" stroke-width="2"></path>
+<!-- Gradient Area Under Curve -->
+<path d="M 30 230 L 30 190 L 80 175 L 130 185 L 180 140 L 230 150 L 280 115 L 330 135 L 380 95 L 430 120 L 480 85 L 530 110 L 580 40 L 630 100 L 680 70 L 730 45 L 730 230 Z" fill="url(#revenueGlow)"></path>
+<!-- Trend Spline Line -->
+<path d="M 30 190 L 80 175 L 130 185 L 180 140 L 230 150 L 280 115 L 330 135 L 380 95 L 430 120 L 480 85 L 530 110 L 580 40 L 630 100 L 680 70 L 730 45" fill="none" stroke="#b81120" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+<!-- Stylized Data Point Anchors -->
+<circle cx="180" cy="140" fill="#ffffff" r="4" stroke="#b81120" stroke-width="2"></circle>
+<circle cx="280" cy="115" fill="#ffffff" r="4" stroke="#b81120" stroke-width="2"></circle>
+<circle cx="380" cy="95" fill="#ffffff" r="4" stroke="#b81120" stroke-width="2"></circle>
+<circle cx="480" cy="85" fill="#ffffff" r="4" stroke="#b81120" stroke-width="2"></circle>
+<!-- Weekend Dinner Surge Highlight -->
+<circle cx="580" cy="40" fill="#b81120" r="7"></circle>
+<circle cx="580" cy="40" fill="#b81120" opacity="0.25" r="11"></circle>
+<circle cx="730" cy="45" fill="#ffffff" r="5" stroke="#b81120" stroke-width="2.5"></circle>
+</svg>
+<!-- Peak Point Floating Callout Pill -->
+<div class="absolute top-2 left-[73%] -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-2 pointer-events-none">
+<div class="w-1.5 h-1.5 rounded-full bg-primary-fixed"></div>
+<div>
+<div class="font-label-sm text-[10px] text-secondary-fixed-dim">Sat Nov 25 • Dinner Rush</div>
+<div class="font-label-md text-label-md font-bold text-white">₹18,450 <span class="font-normal text-xs text-primary-fixed">(76 orders)</span></div>
+</div>
+</div>
+</div>
+<!-- X-Axis Labels -->
+<div class="flex justify-between items-center text-secondary font-label-sm text-label-sm pt-2">
+<span>Nov 01</span>
+<span>Nov 06</span>
+<span>Nov 12</span>
+<span>Nov 18</span>
+<span class="text-primary font-bold">Nov 25 (Peak)</span>
+<span>Nov 30</span>
+</div>
+</div>
+<!-- Right: Revenue by Category Radial Distribution (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<h2 class="font-headline-md text-headline-md text-on-surface">Category Splits</h2>
+<span class="text-[11px] font-semibold text-secondary bg-surface-container px-2 py-0.5 rounded-md">Gross Share</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mb-space-md">Sales weight across core culinary lines</p>
+<!-- Donut Visual with Central Metric -->
+<div class="relative w-44 h-44 mx-auto my-space-sm flex items-center justify-center">
+<svg class="w-full h-full -rotate-90 transform" viewbox="0 0 120 120">
+<!-- Background circle -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#f0f3ff" stroke-width="16"></circle>
+<!-- North Indian & Curries 38% (circumference ~ 301.6; 38% = 114.6) -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#b81120" stroke-dasharray="114.6 301.6" stroke-dashoffset="0" stroke-linecap="round" stroke-width="16"></circle>
+<!-- Biryani & Rice 28% (84.4) -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#dc3135" stroke-dasharray="84.4 301.6" stroke-dashoffset="-118" stroke-linecap="round" stroke-width="16"></circle>
+<!-- Starters & Tandoor 20% (60.3) -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#5c5e66" stroke-dasharray="60.3 301.6" stroke-dashoffset="-205" stroke-linecap="round" stroke-width="16"></circle>
+<!-- Beverages & Desserts 14% (42.2) -->
+<circle cx="60" cy="60" fill="transparent" r="48" stroke="#dfdfe9" stroke-dasharray="42.2 301.6" stroke-dashoffset="-268" stroke-linecap="round" stroke-width="16"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="font-label-sm text-label-sm text-secondary">Total Value</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">₹3.42L</span>
+<span class="text-[10px] text-primary font-semibold">100% Tracked</span>
+</div>
+</div>
+</div>
+<!-- Category Legend Breakdown Stack -->
+<div class="flex flex-col gap-2 pt-space-xs">
+<div class="flex items-center justify-between p-2 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+<span class="font-label-md text-label-md font-medium text-on-surface">North Indian & Curries</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md font-bold text-on-surface">38%</span>
+<span class="font-body-sm text-[11px] text-secondary ml-1">₹1,17,135</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary-container"></span>
+<span class="font-label-md text-label-md font-medium text-on-surface">Biryani & Rice</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md font-bold text-on-surface">28%</span>
+<span class="font-body-sm text-[11px] text-secondary ml-1">₹86,310</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-secondary"></span>
+<span class="font-label-md text-label-md font-medium text-on-surface">Starters & Tandoor</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md font-bold text-on-surface">20%</span>
+<span class="font-body-sm text-[11px] text-secondary ml-1">₹61,650</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-secondary-container"></span>
+<span class="font-label-md text-label-md font-medium text-on-surface">Beverages & Desserts</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md font-bold text-on-surface">14%</span>
+<span class="font-body-sm text-[11px] text-secondary ml-1">₹43,155</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Secondary Analysis Section: Peak Hours Heatmap + Top 5 Best-Selling Dishes -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg mb-space-xl">
+<!-- Left: Peak Hours & Kitchen Load Heatmap (5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">schedule</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Kitchen Load & Peak Hours</h2>
+</div>
+<span class="font-label-sm text-[11px] bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded-full font-bold">Dinner Heavy</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mb-space-lg">Hourly order density throughout operations (11 AM - 11 PM)</p>
+<!-- Peak Hour Bar Distribution Visualization -->
+<div class="space-y-2.5">
+<!-- 12 PM - 1 PM -->
+<div>
+<div class="flex justify-between font-label-sm text-label-sm text-secondary mb-1">
+<span>12 PM – 1 PM (Lunch Warmup)</span>
+<span class="font-semibold text-on-surface">78 orders</span>
+</div>
+<div class="w-full h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 36%;"></div>
+</div>
+</div>
+<!-- 1 PM - 3 PM Peak Lunch -->
+<div>
+<div class="flex justify-between font-label-sm text-label-sm text-secondary mb-1">
+<span class="text-on-surface font-semibold">1 PM – 3 PM (Lunch Peak Rush)</span>
+<span class="font-bold text-primary">142 orders</span>
+</div>
+<div class="w-full h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 66%;"></div>
+</div>
+</div>
+<!-- 4 PM - 6 PM -->
+<div>
+<div class="flex justify-between font-label-sm text-label-sm text-secondary mb-1">
+<span>4 PM – 6 PM (Teatime & Snacks)</span>
+<span class="font-semibold text-on-surface">34 orders</span>
+</div>
+<div class="w-full h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full rounded-full" style="width: 16%;"></div>
+</div>
+</div>
+<!-- 7 PM - 8:30 PM -->
+<div>
+<div class="flex justify-between font-label-sm text-label-sm text-secondary mb-1">
+<span>7 PM – 8:30 PM (Dinner Early Rush)</span>
+<span class="font-semibold text-on-surface">168 orders</span>
+</div>
+<div class="w-full h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 78%;"></div>
+</div>
+</div>
+<!-- 8:30 PM - 10 PM High Peak -->
+<div>
+<div class="flex justify-between font-label-sm text-label-sm text-secondary mb-1">
+<span class="text-primary font-bold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 9:00 PM (Super Peak Surge)
+              </span>
+<span class="font-bold text-primary">214 orders</span>
+</div>
+<div class="w-full h-3.5 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full shadow-[0_0_8px_rgba(184,17,32,0.4)]" style="width: 100%;"></div>
+</div>
+</div>
+<!-- 10 PM - 11:30 PM -->
+<div>
+<div class="flex justify-between font-label-sm text-label-sm text-secondary mb-1">
+<span>10 PM – 11:30 PM (Late Night Closes)</span>
+<span class="font-semibold text-on-surface">82 orders</span>
+</div>
+<div class="w-full h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 38%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Kitchen Callout Notice -->
+<div class="mt-space-md bg-surface-container-low rounded-xl p-3 flex items-start gap-2.5">
+<span class="material-symbols-outlined text-[18px] text-primary mt-0.5">electric_bolt</span>
+<div class="font-body-sm text-body-sm text-on-surface">
+<strong>Capacity Bottleneck:</strong> Fryer and Tandoor stations run at 94% utilization between 8:45 PM and 9:30 PM on weekend services.
+        </div>
+</div>
+</div>
+<!-- Right: Top 5 Best-Selling Dishes Table (7 cols) -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">restaurant_menu</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Top 5 Best-Selling Menu Dishes</h2>
+</div>
+<button class="font-label-sm text-label-sm text-primary hover:underline font-bold flex items-center gap-0.5">
+            View full menu <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mb-space-md">Ranked by aggregate volume, gross contribution, and unit margin</p>
+<!-- Tabular Grid (No hard borders, airy soft rows) -->
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-secondary font-label-sm text-[11px] uppercase tracking-wider bg-surface-container-low/50 rounded-lg">
+<th class="py-2.5 px-3 rounded-l-lg">Dish Name</th>
+<th class="py-2.5 px-2">Category</th>
+<th class="py-2.5 px-2 text-right">Units</th>
+<th class="py-2.5 px-2 text-right">Gross Sales</th>
+<th class="py-2.5 px-2 text-right">Margin</th>
+<th class="py-2.5 px-3 rounded-r-lg text-right">Trend</th>
+</tr>
+</thead>
+<tbody class="divide-y-0 text-on-surface font-body-md text-body-md">
+<!-- Dish 1 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-5 h-5 rounded-md bg-primary-fixed text-on-primary-fixed-variant text-[11px] font-bold flex items-center justify-center">1</span>
+                  Butter Chicken Special
+                </td>
+<td class="py-3 px-2 text-secondary font-body-sm text-body-sm">Curries</td>
+<td class="py-3 px-2 text-right font-medium">342</td>
+<td class="py-3 px-2 text-right font-bold">₹92,340</td>
+<td class="py-3 px-2 text-right font-semibold text-emerald-700">68%</td>
+<td class="py-3 px-3 text-right">
+<span class="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    +18%
+                  </span>
+</td>
+</tr>
+<!-- Dish 2 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-5 h-5 rounded-md bg-surface-container-highest text-on-surface text-[11px] font-bold flex items-center justify-center">2</span>
+                  Dum Gosht Biryani
+                </td>
+<td class="py-3 px-2 text-secondary font-body-sm text-body-sm">Biryani</td>
+<td class="py-3 px-2 text-right font-medium">285</td>
+<td class="py-3 px-2 text-right font-bold">₹85,500</td>
+<td class="py-3 px-2 text-right font-semibold text-emerald-700">62%</td>
+<td class="py-3 px-3 text-right">
+<span class="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    +12%
+                  </span>
+</td>
+</tr>
+<!-- Dish 3 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-5 h-5 rounded-md bg-surface-container-highest text-on-surface text-[11px] font-bold flex items-center justify-center">3</span>
+                  Paneer Tikka Masala
+                </td>
+<td class="py-3 px-2 text-secondary font-body-sm text-body-sm">Vegetarian</td>
+<td class="py-3 px-2 text-right font-medium">210</td>
+<td class="py-3 px-2 text-right font-bold">₹52,500</td>
+<td class="py-3 px-2 text-right font-semibold text-emerald-700">71%</td>
+<td class="py-3 px-3 text-right">
+<span class="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    +5%
+                  </span>
+</td>
+</tr>
+<!-- Dish 4 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-5 h-5 rounded-md bg-surface-container-highest text-on-surface text-[11px] font-bold flex items-center justify-center">4</span>
+                  Garlic Butter Naan Basket
+                </td>
+<td class="py-3 px-2 text-secondary font-body-sm text-body-sm">Breads</td>
+<td class="py-3 px-2 text-right font-medium">520</td>
+<td class="py-3 px-2 text-right font-bold">₹36,400</td>
+<td class="py-3 px-2 text-right font-semibold text-emerald-700">82%</td>
+<td class="py-3 px-3 text-right">
+<span class="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    +24%
+                  </span>
+</td>
+</tr>
+<!-- Dish 5 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-3 px-3 font-semibold text-on-surface flex items-center gap-2">
+<span class="w-5 h-5 rounded-md bg-surface-container-highest text-on-surface text-[11px] font-bold flex items-center justify-center">5</span>
+                  Mango Lassi & Kulfi Combo
+                </td>
+<td class="py-3 px-2 text-secondary font-body-sm text-body-sm">Desserts</td>
+<td class="py-3 px-2 text-right font-medium">195</td>
+<td class="py-3 px-2 text-right font-bold">₹23,400</td>
+<td class="py-3 px-2 text-right font-semibold text-emerald-700">76%</td>
+<td class="py-3 px-3 text-right">
+<span class="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                    +9%
+                  </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="flex items-center justify-between text-[11px] text-secondary pt-3 mt-2 border-t-0">
+<span>Combined top 5 items represent <strong>85.4%</strong> of kitchen output</span>
+<span class="font-medium text-on-surface">Average dish gross profit: 71.8%</span>
+</div>
+</div>
+</div>
+<!-- AI Performance Summary & Insight Box (Matches Home Screen 'Ask a Question' & 'Last Result') -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm mb-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">auto_awesome</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">AI Anomaly & Growth Insights</h3>
+<span class="text-[11px] font-semibold bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded-full">Ollama Engine</span>
+</div>
+<div class="flex items-center gap-space-xs text-[11px] text-secondary">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>Scope locked to Restaurant #1</span>
+<span class="mx-1">•</span>
+<span>Evaluated 12.8k POS ledger rows</span>
+</div>
+</div>
+<!-- Insights Content Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md mb-space-md">
+<div class="bg-surface-container-low rounded-xl p-space-md flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary mt-0.5 shrink-0">
+<span class="material-symbols-outlined text-[18px]">query_stats</span>
+</div>
+<div>
+<div class="font-label-md text-label-md font-bold text-on-surface mb-1">Weekend Revenue Concentration</div>
+<p class="font-body-md text-body-md text-secondary">
+            Dinner rush on Fridays and Saturdays generates <strong>41% of weekly net sales</strong>. Kitchen ticket prep delays peaked between 8:30 PM – 9:30 PM due to concurrent tandoori station orders.
+          </p>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-xl p-space-md flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center text-primary mt-0.5 shrink-0">
+<span class="material-symbols-outlined text-[18px]">lightbulb</span>
+</div>
+<div>
+<div class="font-label-md text-label-md font-bold text-on-surface mb-1">High-Margin Upsell Opportunity</div>
+<p class="font-body-md text-body-md text-secondary">
+            Top recommendation: Bundle high-margin beverages (Mango Lassi / Masala Chai) with Biryani platters to lift average ticket size past <strong>₹310.00</strong> with minimal prep latency.
+          </p>
+</div>
+</div>
+</div>
+<!-- Interactive AI Quick Action Bar -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-secondary">Suggested prompts:</span>
+<button class="bg-surface-container-low hover:bg-surface-container text-on-surface px-space-md py-1.5 rounded-full font-label-sm text-label-sm transition-all flex items-center gap-1.5">
+<span>"Why did beverage sales dip on Tuesday?"</span>
+<span class="material-symbols-outlined text-[14px] text-primary">arrow_forward</span>
+</button>
+<button class="bg-surface-container-low hover:bg-surface-container text-on-surface px-space-md py-1.5 rounded-full font-label-sm text-label-sm transition-all flex items-center gap-1.5">
+<span>"Compare weekend dine-in vs takeaway margins"</span>
+<span class="material-symbols-outlined text-[14px] text-primary">arrow_forward</span>
+</button>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-on-primary px-space-md py-1.5 rounded-xl shadow-[0_4px_14px_0_rgba(184,17,32,0.35)] hover:opacity-95 transition-all font-label-md text-label-md font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">play_arrow</span>
+<span>Run Deep Query</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interaction for toggle buttons
+  const revBtn = document.getElementById('toggle-revenue');
+  const ordBtn = document.getElementById('toggle-orders');
+
+  if (revBtn && ordBtn) {
+    revBtn.addEventListener('click', () => {
+      revBtn.className = "px-space-md py-1 rounded-lg font-label-sm text-label-sm bg-surface-container-lowest text-on-surface font-bold shadow-sm transition-all";
+      ordBtn.className = "px-space-md py-1 rounded-lg font-label-sm text-label-sm text-secondary hover:text-on-surface transition-all";
+    });
+
+    ordBtn.addEventListener('click', () => {
+      ordBtn.className = "px-space-md py-1 rounded-lg font-label-sm text-label-sm bg-surface-container-lowest text-on-surface font-bold shadow-sm transition-all";
+      revBtn.className = "px-space-md py-1 rounded-lg font-label-sm text-label-sm text-secondary hover:text-on-surface transition-all";
+    });
+  }
+</script></main></div></body></html>
