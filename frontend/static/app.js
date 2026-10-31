@@ -1,17 +1,33 @@
 "use strict";
-// Xponent seller dashboard — talks only to real backend endpoints, scoped to the
-// selected restaurant via the X-Dev-Tenant-ID header (server enforces tenant scope).
+// Xponent dashboard — one app, two roles:
+//   Organization (platform owner): cross-tenant overview, leaderboard, live CDC
+//     activity, and a read-only viewer for every database. Uses the operator key.
+//   Restaurant (seller): own numbers only, scoped on the server by X-Dev-Tenant-ID.
+// Talks only to real backend endpoints — nothing here is mocked.
 
 const $ = id => document.getElementById(id);
-const state = { tenant: null, range: "last_30_days", currency: "INR", locale: "en-IN", recent: [] };
+const ico = (n, cls = "") => `<svg class="ico ${cls}"><use href="#i-${n}"/></svg>`;
+const state = {
+  mode: "org", tenant: null, sellerIds: [], range: "last_30_days",
+  currency: "INR", locale: "en-IN", recent: [],
+  db: { selected: null, meta: null, table: null, offset: 0, limit: 25 },
+};
 
 function moneyFmt(v){
   try { return new Intl.NumberFormat(state.locale, {style:"currency", currency:state.currency, maximumFractionDigits:0}).format(Number(v)||0); }
   catch { return (state.currency+" ")+ (Number(v)||0).toLocaleString(); }
 }
 const intf = n => (Number(n)||0).toLocaleString(state.locale);
+function fmtMetric(value, format){
+  if(value==null) return "—";
+  if(format==="currency") return moneyFmt(value);
+  if(format==="percent") return (Math.round(value*10)/10)+"%";
+  return intf(value);
+}
 
-function sellerHdr(extra={}){ return Object.assign({"X-Dev-Tenant-ID": String(state.tenant)}, extra); }
+const adminKey = () => ($("adminKey").value || "").trim();
+const sellerHdr = (extra={}) => Object.assign({"X-Dev-Tenant-ID": String(state.tenant)}, extra);
+const adminHdr  = (extra={}) => Object.assign({"X-Admin-Key": adminKey()}, extra);
 async function jx(path, opts={}){
   const r = await fetch(path, opts);
   if(!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -33,46 +49,180 @@ function rangeDates(label){
   else from=new Date(now-30*DAY);
   return [from.toISOString(), to.toISOString()];
 }
-const rangeLabel = ()=>({last_7_days:"last 7 days",last_30_days:"last 30 days",this_month:"this month",all_time:"all time"})[state.range];
+const RANGE_OPTS=[{value:"last_7_days",label:"Last 7 days"},{value:"last_30_days",label:"Last 30 days"},
+  {value:"this_month",label:"This month"},{value:"all_time",label:"All time"}];
+const rangeLabel = ()=>(RANGE_OPTS.find(o=>o.value===state.range)||{}).label||"";
 
-// ----- sellers -----
-async function loadSellers(){
-  let ids=[];
-  try{ const p=await jx("/api/v1/status/pipeline");
-    ids=(p.stages?.[0]?.detail||[]).map(s=>s.tenant_id).filter(x=>x!=null);
-  }catch{}
-  if(!ids.length) ids=[1,2];
-  ids=[...new Set(ids)].sort((a,b)=>a-b);
-  $("seller").innerHTML=ids.map(i=>`<option value="${i}">Restaurant #${i}</option>`).join("");
-  state.tenant=ids[0];
-  syncSeller();
+// ----- custom dropdown -----
+function makeDropdown(mount, {options, value, onChange}){
+  mount.classList.add("dd");
+  mount.innerHTML=`<button class="dd-btn" type="button"><span class="dd-cur"></span>${ico("chev","chev")}</button><div class="dd-menu"></div>`;
+  const btn=mount.querySelector(".dd-btn"), cur=mount.querySelector(".dd-cur"), menu=mount.querySelector(".dd-menu");
+  let val=value, opts=options;
+  function render(){
+    cur.textContent=(opts.find(o=>String(o.value)===String(val))||opts[0]||{}).label||"";
+    menu.innerHTML=opts.map(o=>`<div class="dd-opt ${String(o.value)===String(val)?'sel':''}" data-v="${o.value}">${o.label}${ico("check")}</div>`).join("");
+    menu.querySelectorAll(".dd-opt").forEach(el=>el.onclick=()=>{ val=el.dataset.v; mount.classList.remove("open"); render(); onChange(val); });
+  }
+  btn.onclick=e=>{ e.stopPropagation(); document.querySelectorAll(".dd.open").forEach(d=>{if(d!==mount)d.classList.remove("open");}); mount.classList.toggle("open"); };
+  render();
+  return { set(v){val=v;render();}, setOptions(o){opts=o;render();} };
+}
+document.addEventListener("click", ()=>document.querySelectorAll(".dd.open").forEach(d=>d.classList.remove("open")));
+
+// ----- navigation + mode -----
+const NAV={
+  org:[{sec:"org-overview",label:"Overview",icon:"home"},{sec:"org-activity",label:"Live activity",icon:"activity"},{sec:"org-db",label:"Databases",icon:"db"}],
+  seller:[{sec:"dashboard",label:"Dashboard",icon:"home"},{sec:"ask",label:"Ask a question",icon:"chat"},{sec:"orders",label:"Orders",icon:"receipt"}],
+};
+function renderNav(){
+  $("nav").innerHTML=NAV[state.mode].map((n,i)=>
+    `<a href="#" class="${i===0?'active':''}" data-sec="${n.sec}">${ico(n.icon)} ${n.label}</a>`).join("");
+  $("nav").querySelectorAll("a").forEach(a=>a.onclick=e=>{e.preventDefault(); showSection(a.dataset.sec);});
+}
+function showSection(sec){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
+  const el=$("sec-"+sec); if(el) el.classList.add("on");
+  $("nav").querySelectorAll("a").forEach(a=>a.classList.toggle("active", a.dataset.sec===sec));
+  if(sec==="dashboard") loadDashboard();
+  else if(sec==="orders") loadOrders();
+  else if(sec==="org-overview") loadOrg();
+  else if(sec==="org-activity") loadActivity();
+  else if(sec==="org-db") loadDatabases();
+}
+function setMode(role){
+  state.mode=role;
+  document.querySelectorAll("#roleSeg button").forEach(b=>b.classList.toggle("active", b.dataset.role===role));
+  renderNav();
+  if(role==="org"){
+    $("avatar").textContent="O"; $("acctName").textContent="Organization"; $("acctSub").textContent="Platform owner";
+    $("sellerSwitchWrap").style.display="none";
+    $("greeting").textContent="Organization overview"; $("greetSub").textContent="Every restaurant on the platform, live.";
+    showSection("org-overview");
+  }else{
+    if(state.tenant==null) state.tenant=state.sellerIds[0]||1;
+    syncSeller();
+    $("sellerSwitchWrap").style.display="block";
+    showSection("dashboard");
+  }
 }
 function syncSeller(){
   const n=`Restaurant #${state.tenant}`;
-  $("acctName").textContent=n; $("avatar").textContent=String(state.tenant);
+  $("avatar").textContent=String(state.tenant); $("acctName").textContent=n; $("acctSub").textContent="Seller account";
   const hr=new Date().getHours();
   const greet=hr<12?"Good morning":hr<18?"Good afternoon":"Good evening";
-  $("greeting").textContent=`${greet}, ${n}! 👋`;
+  $("greeting").textContent=`${greet}, ${n}`; $("greetSub").textContent="Here's how your business is doing.";
 }
 
-// ----- dashboard -----
+// ===================== ORGANIZATION: overview =====================
+async function loadOrg(){
+  const [from,to]=rangeDates(state.range);
+  $("oPeriod1").textContent=$("oPeriod2").textContent=rangeLabel();
+  let o;
+  try{ o=await jx(`/api/v1/org/overview?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,{headers:adminHdr()}); }
+  catch(e){ $("leaderboard").innerHTML=`<tr><td colspan="5" class="err">${e.message.includes("403")?"Enter a valid operator key in the sidebar to load the organization view.":e.message}</td></tr>`; return; }
+  state.currency=o.currency||state.currency; state.locale=state.currency==="INR"?"en-IN":"en-US";
+  $("oTenants").textContent=intf(o.tenants);
+  $("oOrders").textContent=intf(o.totals.order_count);
+  $("oGross").textContent=moneyFmt(o.totals.gross_sales);
+  const v=o.verification||{};
+  const ok=v.status==="VERIFIED";
+  $("oVerify").innerHTML=`<span class="badge ${ok?'fresh':'stale'}"><span class="dotp"></span>${ok?"Verified":"Drift"}</span>`;
+  $("oVerifySub").textContent=`${intf(v.total_buckets||0)} buckets · ${intf(v.corrupted_buckets||0)} corrupted`;
+  $("leaderboard").innerHTML=(o.leaderboard||[]).map((s,i)=>
+    `<tr data-tid="${s.tenant_id}"><td><span class="rankdot">${i+1}</span>Restaurant #${s.tenant_id}</td>`+
+    `<td class="num">${intf(s.order_count)}</td><td class="num">${moneyFmt(s.gross_sales)}</td>`+
+    `<td class="num">${moneyFmt(s.net_sales)}</td><td class="num"><span class="viewlink">Open ${ico("chev")}</span></td></tr>`
+  ).join("")||`<tr><td colspan="5" class="muted">No sellers with data in this period.</td></tr>`;
+  $("leaderboard").querySelectorAll("tr[data-tid]").forEach(tr=>tr.onclick=()=>enterSeller(Number(tr.dataset.tid)));
+}
+function enterSeller(tid){
+  state.tenant=tid; if(sellerDD) sellerDD.set(String(tid));
+  setMode("seller");
+  toast(`Viewing Restaurant #${tid} — its own scoped dashboard`,"ok");
+}
+
+// ===================== ORGANIZATION: live activity =====================
+async function loadActivity(){
+  $("actMsg").textContent="Loading…";
+  try{
+    const r=await jx(`/api/v1/org/activity?limit=50`,{headers:adminHdr()});
+    $("activityBody").innerHTML=(r.events||[]).map(e=>
+      `<tr><td class="small muted">${e.id}</td><td>Restaurant #${e.tenant_id}</td>`+
+      `<td><span class="oppill op-${e.op}">${e.op}</span></td><td class="small">${e.table}</td>`+
+      `<td class="small">${e.order_id??"—"}</td><td class="small muted">${e.lsn??"—"}</td>`+
+      `<td class="small muted">${e.applied_at?e.applied_at.slice(11,19):"—"}</td></tr>`
+    ).join("")||`<tr><td colspan="7" class="muted">No events yet — create or change an order to see CDC flow.</td></tr>`;
+    $("actMsg").textContent=`${(r.events||[]).length} most recent events`;
+  }catch(e){ $("activityBody").innerHTML=`<tr><td colspan="7" class="err">${e.message.includes("403")?"Operator key required.":e.message}</td></tr>`; $("actMsg").textContent=""; }
+}
+
+// ===================== ORGANIZATION: database explorer =====================
+async function loadDatabases(){
+  if(state.db.meta) { renderDbList(); return; }
+  try{
+    const r=await jx(`/api/v1/explore/databases`,{headers:adminHdr()});
+    state.db.meta=r.databases;
+    state.db.selected=(r.databases.find(d=>d.kind==="summary")||r.databases[0]||{}).id;
+    renderDbList(); selectTablesFor(state.db.selected); loadRows();
+  }catch(e){ $("dbList").innerHTML=`<div class="err small">${e.message.includes("403")?"Operator key required.":e.message}</div>`; }
+}
+function renderDbList(){
+  $("dbList").innerHTML=state.db.meta.map(d=>
+    `<div class="dbitem ${d.id===state.db.selected?'sel':''}" data-id="${d.id}">`+
+    `<div class="dbname">${ico(d.kind==="summary"?"db":"store")} ${d.label}</div>`+
+    `<div class="dbsub">${d.host} · ${d.dbname}</div>`+
+    `<span class="dbtag ${d.kind}">${d.kind.toUpperCase()}</span>`+
+    `<div class="dbsub">${d.role}</div></div>`
+  ).join("");
+  $("dbList").querySelectorAll(".dbitem").forEach(el=>el.onclick=()=>{
+    state.db.selected=el.dataset.id; state.db.offset=0; renderDbList(); selectTablesFor(el.dataset.id); loadRows();
+  });
+}
+function selectTablesFor(id){
+  const d=state.db.meta.find(x=>x.id===id)||{tables:[]};
+  state.db.table=d.tables[0];
+  $("dbTables").innerHTML=d.tables.map(t=>`<div class="dbtab ${t===state.db.table?'sel':''}" data-t="${t}">${t}</div>`).join("");
+  $("dbTables").querySelectorAll(".dbtab").forEach(el=>el.onclick=()=>{
+    state.db.table=el.dataset.t; state.db.offset=0;
+    $("dbTables").querySelectorAll(".dbtab").forEach(x=>x.classList.toggle("sel",x.dataset.t===el.dataset.t));
+    loadRows();
+  });
+}
+async function loadRows(){
+  if(!state.db.selected||!state.db.table) return;
+  const q=`database=${encodeURIComponent(state.db.selected)}&table=${encodeURIComponent(state.db.table)}&limit=${state.db.limit}&offset=${state.db.offset}`;
+  $("dbBody").innerHTML=`<tr><td class="muted">Loading…</td></tr>`;
+  try{
+    const r=await jx(`/api/v1/explore/rows?${q}`,{headers:adminHdr()});
+    $("dbHead").innerHTML=`<tr>${r.columns.map(c=>`<th>${c.name}<div class="coltype">${c.type}</div></th>`).join("")}</tr>`;
+    $("dbBody").innerHTML=r.rows.map(row=>`<tr>${row.map(v=>`<td>${v==null?'<span class="muted">null</span>':String(v)}</td>`).join("")}</tr>`).join("")
+      ||`<tr><td class="muted">No rows.</td></tr>`;
+    const start=r.offset+ (r.row_count?1:0), end=r.offset+r.row_count;
+    $("dbMeta").innerHTML=`Table <b>${r.table}</b> · ${r.columns.length} columns · ~${intf(r.estimated_total)} rows (estimated)`;
+    $("dbPage").textContent=`Rows ${start}–${end}`;
+  }catch(e){ $("dbBody").innerHTML=`<tr><td class="err">${e.message}</td></tr>`; }
+}
+
+// ===================== SELLER: dashboard =====================
 async function loadDashboard(){
   const [from,to]=rangeDates(state.range);
-  $("kpiPeriod1").textContent=$("kpiPeriod2").textContent=$("kpiPeriod3").textContent=`${rangeLabel()}`;
+  $("kpiPeriod1").textContent=$("kpiPeriod2").textContent=$("kpiPeriod3").textContent=rangeLabel();
   $("trendSub").textContent=`Your daily net sales for the ${rangeLabel()}.`;
-  // current + previous period (for deltas) — both real queries.
   const span=new Date(to)-new Date(from);
   const prevFrom=new Date(new Date(from)-span).toISOString(), prevTo=from;
-  const t0=performance.now();
-  let cur, prev, trend, fresh;
-  try{
-    cur=await jx(`/api/v1/tenants/${state.tenant}/orders/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,{headers:sellerHdr()});
-    state.currency=cur.data.currency||state.currency; state.locale=state.currency==="INR"?"en-IN":"en-US";
-    fresh=cur.freshness;
-  }catch(e){ toast("Couldn't load your numbers: "+e.message,"err"); return; }
+  const H=sellerHdr(), t0=performance.now();
+  const S=(p)=>jx(p,{headers:H});
+  // Parallel fetches — the previous version awaited these one after another.
+  const [curR,prevR,trendR]=await Promise.allSettled([
+    S(`/api/v1/tenants/${state.tenant}/orders/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+    S(`/api/v1/tenants/${state.tenant}/orders/summary?from=${encodeURIComponent(prevFrom)}&to=${encodeURIComponent(prevTo)}`),
+    S(`/api/v1/tenants/${state.tenant}/orders/trends?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&granularity=day`),
+  ]);
+  if(curR.status!=="fulfilled"){ toast("Couldn't load your numbers: "+curR.reason.message,"err"); return; }
+  const cur=curR.value, prev=prevR.status==="fulfilled"?prevR.value:null, trend=trendR.status==="fulfilled"?trendR.value:{series:[]};
   const qms=Math.round(performance.now()-t0);
-  try{ prev=await jx(`/api/v1/tenants/${state.tenant}/orders/summary?from=${encodeURIComponent(prevFrom)}&to=${encodeURIComponent(prevTo)}`,{headers:sellerHdr()}); }catch{ prev=null; }
-  try{ trend=await jx(`/api/v1/tenants/${state.tenant}/orders/trends?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&granularity=day`,{headers:sellerHdr()}); }catch{ trend={series:[]}; }
+  state.currency=cur.data.currency||state.currency; state.locale=state.currency==="INR"?"en-IN":"en-US";
 
   $("kpiOrders").textContent=intf(cur.data.order_count);
   $("kpiGross").textContent=moneyFmt(cur.data.gross_sales);
@@ -82,24 +232,26 @@ async function loadDashboard(){
   setDelta("dNet", cur.data.net_sales, prev?.data.net_sales);
 
   drawTrend(trend.series);
-  $("insights").innerHTML=
+  let rows=
     `<tr><td>Orders</td><td class="num">${intf(cur.data.order_count)}</td></tr>`+
     `<tr><td>Gross sales</td><td class="num">${moneyFmt(cur.data.gross_sales)}</td></tr>`+
-    `<tr><td>Net sales</td><td class="num">${moneyFmt(cur.data.net_sales)}</td></tr>`+
-    `<tr><td>Avg. order value</td><td class="num">${moneyFmt(cur.data.order_count?cur.data.gross_sales/cur.data.order_count:0)}</td></tr>`;
+    `<tr><td>Net sales</td><td class="num">${moneyFmt(cur.data.net_sales)}</td></tr>`;
+  // Config-defined derived metrics (Bonus B-4) — appear here with no UI code change.
+  (cur.data.derived||[]).forEach(m=>{ rows+=`<tr><td>${m.label}</td><td class="num">${fmtMetric(m.value,m.format)}</td></tr>`; });
+  $("insights").innerHTML=rows;
 
-  const ok=fresh&&fresh.status==="FRESH";
+  const fresh=cur.freshness, fok=fresh&&fresh.status==="FRESH";
   $("dataStatus").innerHTML=
-    `<div><span class="badge ${ok?"fresh":"stale"}"><span class="dotp"></span>${ok?"Up to date":"May be delayed"}</span></div>`+
+    `<div><span class="badge ${fok?"fresh":"stale"}"><span class="dotp"></span>${fok?"Up to date":"May be delayed"}</span></div>`+
     `<div style="margin-top:8px">Last updated: <b>${fresh?fresh.human_readable:"—"}</b></div>`+
     `<div>Query time: <b>${qms} ms</b></div>`;
 }
 function setDelta(id, cur, prev){
   const el=$(id);
-  if(prev==null||prev===0){ el.textContent=""; return; }
+  if(prev==null||prev===0){ el.textContent=""; el.className="delta"; return; }
   const pct=Math.round(((cur-prev)/prev)*100);
   el.className="delta "+(pct>=0?"up":"down");
-  el.textContent=(pct>=0?"↑ +":"↓ ")+pct+"%";
+  el.innerHTML=`${ico(pct>=0?"up":"down")} ${pct>=0?"+":""}${pct}%`;
 }
 function drawTrend(series){
   const svg=$("trend"); if(!series||!series.length){ svg.innerHTML=`<text x="12" y="30" fill="#9ca3af" font-size="13">No data for this period.</text>`; return; }
@@ -109,45 +261,48 @@ function drawTrend(series){
   svg.innerHTML=`<path d="${d} L${W},${H} L0,${H} Z" fill="rgba(229,56,59,.10)"/><path d="${d}" fill="none" stroke="#e5383b" stroke-width="2.5"/>`;
 }
 
-// ----- NL query -----
-const EXAMPLES=["My sales this week","Order count last 7 days","Compare this month vs last month","Order status breakdown last 30 days","Top products this month"];
-function renderChips(el, input, ans){
-  el.innerHTML=EXAMPLES.map(e=>`<span class="chip">${e}</span>`).join("");
-  el.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{input.value=c.textContent; askQuery(input, ans, el===$("chips"));});
+// ===================== NL query (seller + org) =====================
+const EXAMPLES=["My sales this week","Order count last 7 days","Order status breakdown last 30 days","Top products this month"];
+const ORG_EXAMPLES=["Compare restaurants this month","Total orders across all restaurants last 7 days","Which restaurant sold most this month"];
+function renderChips(el, input, ans, isFull){
+  const ex=(state.mode==="org"&&el===$("ochips"))?ORG_EXAMPLES:EXAMPLES;
+  el.innerHTML=ex.map(e=>`<span class="chip">${e}</span>`).join("");
+  el.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{input.value=c.textContent; askQuery(input, ans, isFull, el===$("ochips"));});
 }
 function answerText(res){
-  const r=res.result||{}, cur=state.currency;
-  if(r.data) return `You had <b>${intf(r.data.order_count)}</b> orders, <b>${moneyFmt(r.data.gross_sales)}</b> gross and <b>${moneyFmt(r.data.net_sales)}</b> net.`;
+  const r=res.result||{};
+  if(r.leaderboard) return r.leaderboard.map(s=>`R#${s.tenant_id}: <b>${moneyFmt(s.gross_sales)}</b>`).join(" · ");
+  if(r.totals) return `<b>${intf(r.totals.order_count)}</b> orders · <b>${moneyFmt(r.totals.gross_sales)}</b> gross across <b>${r.tenants}</b> restaurants.`;
+  if(r.data) return `<b>${intf(r.data.order_count)}</b> orders, <b>${moneyFmt(r.data.gross_sales)}</b> gross and <b>${moneyFmt(r.data.net_sales)}</b> net.`;
   if(r.series){ const o=r.series.reduce((a,p)=>a+(p.order_count||0),0); return `<b>${intf(o)}</b> orders across <b>${r.series.length}</b> day(s).`; }
   if(r.categories) return r.categories.map(c=>`${c.status}: <b>${intf(c.order_count)}</b>`).join(" · ");
   if(r.items) return `Top: `+r.items.slice(0,3).map(p=>`${p.product_name||("#"+p.product_id)} (${moneyFmt(p.gross_sales)})`).join(", ");
-  if(r.leaderboard) return r.leaderboard.map(s=>`R#${s.tenant_id}: ${moneyFmt(s.gross_sales)}`).join(" · ");
   return "No matching data for that question.";
 }
-async function askQuery(input, ansEl, isFull){
+async function askQuery(input, ansEl, isFull, isOrg){
   const q=input.value.trim(); if(!q) return;
   ansEl.innerHTML=`<span class="spin"></span> Thinking…`;
   try{
-    const res=await jx("/api/v1/nlq",{method:"POST",headers:sellerHdr({"Content-Type":"application/json"}),body:JSON.stringify({question:q})});
-    const f=res.freshness, empty=(res.result?.data && res.result.data.order_count===0);
-    const fb=res.fallback?` <span class="badge stale">simple mode</span>`:"";
+    const headers=isOrg?adminHdr({"Content-Type":"application/json"}):sellerHdr({"Content-Type":"application/json"});
+    const body=isOrg?{question:q,tenant_id:null}:{question:q};
+    const res=await jx("/api/v1/nlq",{method:"POST",headers,body:JSON.stringify(body)});
+    const f=res.freshness;
+    const badge=res.fallback?` <span class="badge stale">simple mode</span>`:(res.fast_path?` <span class="badge fresh"><span class="dotp"></span>instant</span>`:` <span class="badge lock">${res.engine}</span>`);
     const head=isFull?`<div class="lead">${answerText(res)}</div>`:`<div>${answerText(res)}</div>`;
     ansEl.innerHTML=head+
-      `<div class="small muted" style="margin-top:8px">${res.interpreted.label}${fb}`+
+      `<div class="small muted" style="margin-top:8px">${res.interpreted.label}${badge}`+
       (f?` · <span class="badge ${f.status==="FRESH"?"fresh":"stale"}"><span class="dotp"></span>${f.human_readable}</span>`:"")+
-      ` · answered in ${res.execution_ms} ms from your live sales data.</div>`+
-      (empty?`<div class="small muted" style="margin-top:6px">No orders in that period — try “All time” or create an order in the Orders tab.</div>`:"");
-    // recent + diagnostics
-    state.recent.unshift(q); state.recent=state.recent.slice(0,6); renderRecent();
-    $("diagSql").textContent=`engine: ${res.engine}  (requested: ${res.provider_requested}${res.fallback?", fell back":""})\nscope_locked: ${res.scope_locked}\n\n${res.sql}`;
+      ` · answered in ${res.execution_ms} ms.</div>`;
+    if(!isOrg){ state.recent.unshift(q); state.recent=state.recent.slice(0,6); renderRecent(); }
+    $("diagSql").textContent=`engine: ${res.engine}  (requested: ${res.provider_requested}${res.fast_path?", fast-path":""}${res.fallback?", fell back":""})\nscope_locked: ${res.scope_locked}\n\n${res.sql}`;
   }catch(e){ ansEl.innerHTML=`<span class="err">Sorry — that didn’t work: ${e.message}</span>`; }
 }
 function renderRecent(){
   $("recent").innerHTML=state.recent.length? state.recent.map(q=>`<div style="padding:5px 0;border-bottom:1px solid var(--canvas)"><a href="#" data-q="${encodeURIComponent(q)}">${q}</a></div>`).join(""):"None yet.";
-  $("recent").querySelectorAll("a").forEach(a=>a.onclick=ev=>{ev.preventDefault(); const q=decodeURIComponent(a.dataset.q); $("q").value=q; askQuery($("q"),$("answer"),true);});
+  $("recent").querySelectorAll("a").forEach(a=>a.onclick=ev=>{ev.preventDefault(); const q=decodeURIComponent(a.dataset.q); $("q").value=q; askQuery($("q"),$("answer"),true,false);});
 }
 
-// ----- orders CRUD -----
+// ===================== SELLER: orders CRUD =====================
 async function loadOrders(){
   try{
     const r=await jx(`/api/v1/tenants/${state.tenant}/orders?limit=20`,{headers:sellerHdr()});
@@ -176,7 +331,8 @@ async function createOrder(){
 }
 async function orderAction(act, id){
   try{
-    if(act==="cancel"){ await jx(`/api/v1/tenants/${state.tenant}/orders/${id}/cancel`,{method:"POST",headers:sellerHdr()}); toast(`Order #${id} cancelled`,"ok"); }
+    if(act==="cancel"){ if(!confirm(`Cancel order #${id}?`)) return;
+      await jx(`/api/v1/tenants/${state.tenant}/orders/${id}/cancel`,{method:"POST",headers:sellerHdr()}); toast(`Order #${id} cancelled`,"ok"); }
     else if(act==="del"){ if(!confirm(`Delete order #${id}? This cannot be undone.`)) return;
       await jx(`/api/v1/tenants/${state.tenant}/orders/${id}`,{method:"DELETE",headers:sellerHdr()}); toast(`Order #${id} deleted`,"ok"); }
     else if(act==="upd"){ const v=prompt("New amount in paise (e.g. 25000 = ₹250):"); if(!v) return; const amt=parseInt(v,10);
@@ -187,35 +343,50 @@ async function orderAction(act, id){
 }
 function refreshAfterWrite(){ loadOrders(); setTimeout(()=>{loadDashboard();},1500); }
 
-// ----- diagnostics (admin) -----
+// ===================== diagnostics (Receipts) =====================
 async function recon(kind){
-  const key=$("adminKey").value; const out=$("diagRecon");
-  if(!key){ out.textContent="Enter the admin key to use Receipts."; return; }
+  const out=$("diagRecon");
+  if(!adminKey()){ out.textContent="Enter the operator key in the sidebar to use Receipts."; return; }
+  const tid=state.tenant||state.sellerIds[0]||1;
   try{
-    if(kind==="verify"){ const r=await jx(`/api/v1/admin/verification?tenant_id=${state.tenant}&run=true&sample=200`,{headers:{"X-Admin-Key":key}}); out.textContent="VERIFY → "+JSON.stringify(r.digest_health,null,2); }
-    else{ const r=await jx(`/api/v1/admin/rebuild`,{method:"POST",headers:{"X-Admin-Key":key,"Content-Type":"application/json"},body:JSON.stringify({mode:"TARGETED",tenant_id:state.tenant,day_bucket:$("reconDay").value})}); out.textContent="REPAIR → "+JSON.stringify(r,null,2); }
+    if(kind==="verify"){ const r=await jx(`/api/v1/admin/verification?tenant_id=${tid}&run=true&sample=200`,{headers:adminHdr()}); out.textContent="VERIFY: "+JSON.stringify(r.digest_health,null,2); }
+    else{ const r=await jx(`/api/v1/admin/rebuild`,{method:"POST",headers:adminHdr({"Content-Type":"application/json"}),body:JSON.stringify({mode:"TARGETED",tenant_id:tid,day_bucket:$("reconDay").value})}); out.textContent="REPAIR: "+JSON.stringify(r,null,2); }
   }catch(e){ out.textContent="Error: "+e.message; }
 }
 
-// ----- nav + wiring -----
-function showSection(sec){
-  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
-  $("sec-"+sec).classList.add("on");
-  document.querySelectorAll("#nav a").forEach(a=>a.classList.toggle("active", a.dataset.sec===sec));
-  if(sec==="orders") loadOrders();
+// ===================== sellers + wiring =====================
+let sellerDD=null, rangeDD=null;
+async function loadSellers(){
+  let ids=[];
+  try{ const p=await jx("/api/v1/status/pipeline");
+    ids=(p.stages?.[0]?.detail||[]).map(s=>s.tenant_id).filter(x=>x!=null);
+  }catch{}
+  if(!ids.length) ids=[1,2];
+  state.sellerIds=[...new Set(ids)].sort((a,b)=>a-b);
+  state.tenant=state.sellerIds[0];
+  sellerDD=makeDropdown($("sellerDD"), {
+    options:state.sellerIds.map(i=>({value:i,label:`Restaurant #${i}`})), value:state.tenant,
+    onChange:v=>{ state.tenant=Number(v); syncSeller(); loadDashboard(); if($("sec-orders").classList.contains("on")) loadOrders(); },
+  });
 }
 function wire(){
-  document.querySelectorAll("#nav a").forEach(a=>a.onclick=e=>{e.preventDefault(); showSection(a.dataset.sec);});
-  $("seller").onchange=()=>{ state.tenant=Number($("seller").value); syncSeller(); loadDashboard(); if($("sec-orders").classList.contains("on")) loadOrders(); };
-  $("range").onchange=()=>{ state.range=$("range").value; loadDashboard(); };
+  document.querySelectorAll("#roleSeg button").forEach(b=>b.onclick=()=>setMode(b.dataset.role));
+  rangeDD=makeDropdown($("rangeDD"), {options:RANGE_OPTS, value:state.range,
+    onChange:v=>{ state.range=v; state.mode==="org"?loadOrg():loadDashboard(); }});
   $("diagBtn").onclick=()=>{ const d=$("diag"); d.style.display=d.style.display==="none"?"block":"none"; d.open=true; };
-  renderChips($("chips"), $("q"), $("answer"));
-  renderChips($("chipsMini"), $("qMini"), $("ansMini"));
-  $("run").onclick=()=>askQuery($("q"),$("answer"),true);
-  $("runMini").onclick=()=>askQuery($("qMini"),$("ansMini"),false);
-  $("q").addEventListener("keydown",e=>{if(e.key==="Enter")askQuery($("q"),$("answer"),true);});
-  $("qMini").addEventListener("keydown",e=>{if(e.key==="Enter")askQuery($("qMini"),$("ansMini"),false);});
+  renderChips($("chips"), $("q"), $("answer"), true);
+  renderChips($("chipsMini"), $("qMini"), $("ansMini"), false);
+  renderChips($("ochips"), $("oq"), $("oanswer"), true);
+  $("run").onclick=()=>askQuery($("q"),$("answer"),true,false);
+  $("runMini").onclick=()=>askQuery($("qMini"),$("ansMini"),false,false);
+  $("orun").onclick=()=>askQuery($("oq"),$("oanswer"),true,true);
+  $("q").addEventListener("keydown",e=>{if(e.key==="Enter")askQuery($("q"),$("answer"),true,false);});
+  $("qMini").addEventListener("keydown",e=>{if(e.key==="Enter")askQuery($("qMini"),$("ansMini"),false,false);});
+  $("oq").addEventListener("keydown",e=>{if(e.key==="Enter")askQuery($("oq"),$("oanswer"),true,true);});
   $("createOrder").onclick=createOrder;
+  $("actRefresh").onclick=loadActivity;
+  $("dbPrev").onclick=()=>{ state.db.offset=Math.max(0,state.db.offset-state.db.limit); loadRows(); };
+  $("dbNext").onclick=()=>{ state.db.offset+=state.db.limit; loadRows(); };
   $("verify").onclick=()=>recon("verify");
   $("repair").onclick=()=>recon("repair");
 }
@@ -223,6 +394,10 @@ function wire(){
 (async function init(){
   wire();
   await loadSellers();
-  await loadDashboard();
-  setInterval(()=>{ if($("sec-dashboard").classList.contains("on")) loadDashboard(); }, 8000);
+  setMode("org");
+  setInterval(()=>{
+    if($("sec-dashboard").classList.contains("on")) loadDashboard();
+    else if($("sec-org-overview").classList.contains("on")) loadOrg();
+    else if($("sec-org-activity").classList.contains("on")) loadActivity();
+  }, 8000);
 })();

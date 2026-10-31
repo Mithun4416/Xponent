@@ -13,6 +13,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 
 from app.core import config
 from app.core.db import pools, primary_for_tenant, slot_for_tenant
+from app.core.limits import heavy_query_limit
 from app.core.security import get_tenant_context
 from app.services import query_service
 from app.services.freshness import freshness_block
@@ -38,6 +39,7 @@ async def orders_summary(
     from_ts: datetime = Query(..., alias="from"),
     to_ts: datetime = Query(..., alias="to"),
     tenant: int = Depends(get_tenant_context),
+    _rl=Depends(heavy_query_limit),
 ):
     frm, to = _window(from_ts, to_ts)
     data = await query_service.summary(pools.summary, primary_for_tenant(tenant), tenant, frm, to)
@@ -53,6 +55,7 @@ async def orders_trends(
     to_ts: datetime = Query(..., alias="to"),
     granularity: str = Query("day", pattern="^(hour|day)$"),
     tenant: int = Depends(get_tenant_context),
+    _rl=Depends(heavy_query_limit),
 ):
     frm, to = _window(from_ts, to_ts)
     series = await query_service.trends(pools.summary, tenant, frm, to, granularity)
@@ -68,6 +71,7 @@ async def products_top(
     limit: int = Query(10, ge=1, le=100),
     sort_by: str = Query("gross_sales", pattern="^(gross_sales|net_sales|qty_sold)$"),
     tenant: int = Depends(get_tenant_context),
+    _rl=Depends(heavy_query_limit),
 ):
     frm, to = _window(from_ts, to_ts)
     items = await query_service.top_products(pools.summary, tenant, frm, to, limit, sort_by)
@@ -81,6 +85,7 @@ async def orders_by_status(
     from_ts: datetime = Query(..., alias="from"),
     to_ts: datetime = Query(..., alias="to"),
     tenant: int = Depends(get_tenant_context),
+    _rl=Depends(heavy_query_limit),
 ):
     frm, to = _window(from_ts, to_ts)
     categories = await query_service.by_status(pools.summary, primary_for_tenant(tenant), tenant, frm, to)

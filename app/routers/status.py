@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
+from app.core import config, limits
 from app.core.db import pools
 
 router = APIRouter(prefix="/api/v1/status", tags=["Status"])
@@ -56,5 +57,7 @@ async def pipeline():
             {"name": "CDC → Aggregation → Summary store", "detail": checkpoints},
             {"name": "Query API", "detail": {"status": "UP"}},
         ],
+        "rate_limit": {"per_tenant_max_concurrency": config.TENANT_MAX_CONCURRENCY,
+                       "in_flight": limits.snapshot()},
         "checked_at": now.isoformat(),
     }

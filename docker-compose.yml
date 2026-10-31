@@ -138,8 +138,8 @@ services:
       REDIS_URL: "redis://redis-cache:6379/0"
       AUTH_DEV_MODE: "true"
       ADMIN_KEY: "xpo-admin-dev"
-      # NL query provider: ollama (local Gemma, no key) | anthropic | rules
-      NLQ_PROVIDER: "${NLQ_PROVIDER:-ollama}"
+      # NL query provider: rules (instant, no dependency — default) | ollama (local Gemma) | anthropic
+      NLQ_PROVIDER: "${NLQ_PROVIDER:-rules}"
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-gemma3}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}" # only used when NLQ_PROVIDER=anthropic

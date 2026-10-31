@@ -53,7 +53,46 @@ class QueryPlan:
 
 
 # ----------------------------- deterministic fallback -----------------------------
+# Explicit calendar dates the user typed (e.g. "2026-07-01", "2026/07/01",
+# "from 2026-07-01 to 2026-07-07"). These MUST win over the vague keyword ranges,
+# otherwise every dated question silently collapses to the last-30-days default
+# and returns identical numbers regardless of the date.
+_ISO_DATE = re.compile(r"\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b")
+_ISO_MONTH = re.compile(r"\b(\d{4})[-/](\d{1,2})\b")
+
+
+def _mk_day(y: int, m: int, dd: int) -> datetime | None:
+    try:
+        return datetime(y, m, dd, tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _explicit_dates(q: str) -> tuple[datetime, datetime, str] | None:
+    """Parse explicit dates/ranges the user typed. A single date -> that whole
+    calendar day [00:00, next 00:00); two dates -> the inclusive span; a bare
+    YYYY-MM -> that whole month. Returns None if no explicit date is present."""
+    days = [d for (y, m, dd) in _ISO_DATE.findall(q) if (d := _mk_day(int(y), int(m), int(dd)))]
+    if len(days) >= 2:
+        s, e = min(days), max(days)
+        return s, e + timedelta(days=1), f"{s.date()} → {e.date()}"
+    if len(days) == 1:
+        s = days[0]
+        return s, s + timedelta(days=1), f"{s.date()}"
+    mo = _ISO_MONTH.findall(q)
+    if mo:
+        y, m = int(mo[0][0]), int(mo[0][1])
+        if 1 <= m <= 12:
+            s = datetime(y, m, 1, tzinfo=timezone.utc)
+            e = datetime(y + 1, 1, 1, tzinfo=timezone.utc) if m == 12 else datetime(y, m + 1, 1, tzinfo=timezone.utc)
+            return s, e, f"{y}-{m:02d}"
+    return None
+
+
 def _resolve_range(q: str, now: datetime) -> tuple[datetime, datetime, str]:
+    ex = _explicit_dates(q)
+    if ex:
+        return ex
     d = now
     def floor_day(x): return x.replace(hour=0, minute=0, second=0, microsecond=0)
     if "yesterday" in q:
@@ -79,6 +118,27 @@ def _resolve_tenant(q: str) -> int | None:
     if m:
         return ord(m.group(1)) - ord("a") + 1   # A->1, B->2
     return None
+
+
+# Signals that tell us the deterministic parser already understands the question,
+# so we can answer instantly and never pay for an LLM round-trip (the fast path).
+_TIME_SIGNALS = ("today", "yesterday", "last hour", "past hour", "this week", "last 7",
+                 "past week", "last 30", "this month", "past month", "last 24", "all time",
+                 "this year", "week", "month", "day", "hour")
+_INTENT_SIGNALS = ("sale", "sales", "order", "orders", "revenue", "gross", "net", "count",
+                   "trend", "daily", "per day", "over time", "top", "best", "product",
+                   "item", "dish", "status", "breakdown", "cancel", "placed", "shipped",
+                   "delivered", "compare", "across", "leaderboard", "restaurant", "how many",
+                   "total", "average", "avg")
+
+
+def is_deterministic_confident(question: str) -> bool:
+    """True when the rules parser clearly understands the question (a time phrase
+    AND an intent). Such questions skip the LLM and answer in well under 10 ms."""
+    q = question.lower()
+    has_time = any(t in q for t in _TIME_SIGNALS) or bool(_ISO_DATE.search(q)) or bool(_ISO_MONTH.search(q))
+    has_intent = any(t in q for t in _INTENT_SIGNALS)
+    return has_time and has_intent
 
 
 def parse_deterministic(question: str, now: datetime) -> QueryPlan:
@@ -239,9 +299,19 @@ def plan_to_sql(p: QueryPlan) -> str:
 
 
 # ----------------------------- execute via existing rollup path -----------------------------
-async def _plan_via_provider(question: str, tenant_ids: list[int], now: datetime) -> tuple[QueryPlan, str, str | None]:
-    """Return (plan, provider_requested, fallback_reason|None)."""
+async def _plan_via_provider(question: str, tenant_ids: list[int], now: datetime) -> tuple[QueryPlan, str, str | None, bool]:
+    """Return (plan, provider_requested, fallback_reason|None, fast_path)."""
     provider = config.NLQ_PROVIDER
+
+    # FAST PATH: if the rules parser already understands the question, answer now
+    # and skip the LLM. Keeps the common demo questions instant; the model is only
+    # consulted for phrasing the rules don't recognise.
+    if config.NLQ_FAST_PATH and provider != "rules" and is_deterministic_confident(question):
+        plan = parse_deterministic(question, now)
+        plan.engine = "rules-fast"
+        _log(f"provider_requested={provider} engine=rules-fast (skipped LLM)")
+        return plan, provider, None, True
+
     plan = None
     if provider == "ollama":
         plan = await parse_ollama(question, tenant_ids, now)
@@ -255,7 +325,7 @@ async def _plan_via_provider(question: str, tenant_ids: list[int], now: datetime
     if plan is None:
         plan = parse_deterministic(question, now)
     _log(f"provider_requested={provider} engine={plan.engine}")
-    return plan, provider, fallback
+    return plan, provider, fallback, False
 
 
 async def run_nlq(question: str, pinned_tenant: int | None = None) -> dict:
@@ -265,7 +335,15 @@ async def run_nlq(question: str, pinned_tenant: int | None = None) -> dict:
 
     now = datetime.now(timezone.utc)
     tenant_ids = sorted(s.tenant_id for s in pools.sources if s.tenant_id is not None)
-    plan, provider_requested, fallback_reason = await _plan_via_provider(question, tenant_ids, now)
+    plan, provider_requested, fallback_reason, fast_path = await _plan_via_provider(question, tenant_ids, now)
+
+    # Explicit calendar dates always win over whatever range the engine chose, so
+    # a dated question answers for exactly that day/span (never the default window).
+    ex = _explicit_dates(question.lower())
+    if ex:
+        plan.frm, plan.to, _label = ex
+        who = "all restaurants" if plan.scope == "org" else f"Restaurant #{plan.tenant_id}"
+        plan.interpreted = f"{who} · {plan.metric.replace('_', ' ')} · {_label}"
 
     # Server-enforced tenant scope: a pinned tenant overrides anything the model or
     # the question text chose — the model cannot select another tenant.
@@ -298,8 +376,9 @@ async def run_nlq(question: str, pinned_tenant: int | None = None) -> dict:
 
     return {
         "question": question,
-        "engine": plan.engine,                       # actual: ollama | anthropic | rules
+        "engine": plan.engine,                       # actual: ollama | anthropic | rules | rules-fast
         "provider_requested": provider_requested,
+        "fast_path": fast_path,                      # true = understood by rules, LLM skipped (instant)
         "fallback": fallback_reason,                 # null unless the provider fell back to rules
         "scope_locked": pinned_tenant is not None,
         "interpreted": {"scope": plan.scope, "tenant_id": plan.tenant_id, "metric": plan.metric,

@@ -3,27 +3,65 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Xponent — Restaurant Dashboard</title>
+<title>Xponent — Live Aggregation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+<!-- Icon sprite: line icons (currentColor). No emoji anywhere in the UI. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-6.5A8 8 0 1 1 21 12z"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21zM8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 4h2l2.4 12.2a1 1 0 0 0 1 .8h8.7a1 1 0 0 0 1-.8L21 8H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M2 6.5A1.5 1.5 0 0 1 3.5 5h17A1.5 1.5 0 0 1 22 6.5v11A1.5 1.5 0 0 1 20.5 19h-17A1.5 1.5 0 0 1 2 17.5zM2 9.5h20M6 14h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 20V4M4 20h16M8 20v-6M12 20V9M16 20v-9M20 20V6"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 7-8M21 7h-4m4 0v4"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.8 4.9L19 9.7l-4.2 2.6L13.8 17 12 13.9 10.2 17 9.2 12.3 5 9.7l5.2-1.8zM19 14l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M8 11a4 4 0 1 1 8 0c0 1.8-1 2.7-1.6 3.6-.3.5-.4 1-.4 1.4H10c0-.4-.1-.9-.4-1.4C9 13.7 8 12.8 8 11z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 7 2.6h.1A1.6 1.6 0 0 0 8 1.1V1a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 14.6 2.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M7 5.5v13a1 1 0 0 0 1.5.86l10-6.5a1 1 0 0 0 0-1.72l-10-6.5A1 1 0 0 0 7 5.5z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M15 21V9h3a2 2 0 0 1 2 2v10M4 21h17M8 7h3M8 11h3M8 15h3"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 9.5 5.2 4h13.6L20 9.5M4 9.5h16M4 9.5a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0M5 11v9h14v-9M9 20v-5h4v5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6zM9 12l2 2 4-4"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l2 6 4-14 2 8h6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 1 0-.9 4.5M20 5v6h-6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5 9-11"/></symbol>
+</svg>
+
 <div class="app">
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="logo"><img src="/static/logo.png" alt="Xponent"><span>Xponent</span></div>
-    <nav class="nav" id="nav">
-      <a href="#" class="active" data-sec="dashboard"><span class="ico">🏠</span> Dashboard</a>
-      <a href="#" data-sec="ask"><span class="ico">💬</span> Ask a Question</a>
-      <a href="#" data-sec="orders"><span class="ico">🧾</span> Orders</a>
-    </nav>
+
+    <!-- Role switch: the platform owner vs a single restaurant (seller) -->
+    <div class="roleseg" id="roleSeg">
+      <button data-role="org" class="active"><svg class="ico"><use href="#i-building"/></svg>Organization</button>
+      <button data-role="seller"><svg class="ico"><use href="#i-store"/></svg>Restaurant</button>
+    </div>
+
+    <nav class="nav" id="nav"></nav>
+
     <div class="side-foot">
       <div class="acct">
-        <div class="av" id="avatar">R</div>
-        <div><div class="nm" id="acctName">Restaurant</div><div class="sub">Seller account</div></div>
+        <div class="av" id="avatar">O</div>
+        <div><div class="nm" id="acctName">Organization</div><div class="sub" id="acctSub">Platform owner</div></div>
       </div>
-      <select id="seller" aria-label="Switch restaurant"></select>
+      <div class="seller-switch" id="sellerSwitchWrap" style="display:none">
+        <div class="side-lbl">Viewing restaurant</div>
+        <div id="sellerDD"></div>
+      </div>
+      <div class="adminwrap" id="adminWrap">
+        <div class="side-lbl">Operator key</div>
+        <input id="adminKey" type="password" placeholder="admin key" value="xpo-admin-dev" autocomplete="off">
+      </div>
     </div>
   </aside>
 
@@ -31,46 +69,104 @@
   <main class="main">
     <div class="topbar">
       <div class="greet">
-        <h1 id="greeting">Welcome 👋</h1>
-        <p id="greetSub">Here's how your business is doing.</p>
+        <h1 id="greeting">Organization overview</h1>
+        <p id="greetSub">Every restaurant on the platform, live.</p>
       </div>
       <div class="top-ctrl">
-        <select class="select" id="range" aria-label="Date range">
-          <option value="last_7_days">Last 7 days</option>
-          <option value="last_30_days" selected>Last 30 days</option>
-          <option value="this_month">This month</option>
-          <option value="all_time">All time</option>
-        </select>
-        <button class="iconbtn" id="diagBtn" title="Diagnostics">⚙️</button>
+        <div id="rangeDD"></div>
+        <button class="iconbtn" id="diagBtn" title="Diagnostics"><svg class="ico"><use href="#i-gear"/></svg></button>
       </div>
     </div>
 
-    <!-- DASHBOARD -->
-    <section class="section on" id="sec-dashboard">
+    <!-- ===================== ORGANIZATION: OVERVIEW ===================== -->
+    <section class="section" id="sec-org-overview">
       <div class="row kpis">
-        <div class="card kpi"><div class="k-top"><div class="plate">🛒</div><div class="k-title">Total orders</div></div>
-          <div><span class="k-val num" id="kpiOrders">—</span> <span class="delta up" id="dOrders"></span></div>
-          <div class="k-sub" id="kpiPeriod1"></div></div>
-        <div class="card kpi"><div class="k-top"><div class="plate alt">💳</div><div class="k-title">Gross sales</div></div>
-          <div><span class="k-val num" id="kpiGross">—</span> <span class="delta up" id="dGross"></span></div>
-          <div class="k-sub" id="kpiPeriod2"></div></div>
-        <div class="card kpi"><div class="k-top"><div class="plate">📊</div><div class="k-title">Net sales</div></div>
-          <div><span class="k-val num" id="kpiNet">—</span> <span class="delta up" id="dNet"></span></div>
-          <div class="k-sub" id="kpiPeriod3"></div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate"><svg class="ico"><use href="#i-store"/></svg></div><div class="k-title">Restaurants</div></div>
+          <div><span class="k-val num" id="oTenants">—</span></div><div class="k-sub">on the platform</div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate"><svg class="ico"><use href="#i-cart"/></svg></div><div class="k-title">Total orders</div></div>
+          <div><span class="k-val num" id="oOrders">—</span></div><div class="k-sub" id="oPeriod1"></div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate alt"><svg class="ico"><use href="#i-card"/></svg></div><div class="k-title">Gross sales</div></div>
+          <div><span class="k-val num" id="oGross">—</span></div><div class="k-sub" id="oPeriod2"></div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate"><svg class="ico"><use href="#i-shield"/></svg></div><div class="k-title">Data integrity</div></div>
+          <div><span class="k-val" id="oVerify" style="font-size:19px">—</span></div><div class="k-sub" id="oVerifySub">Receipts</div></div>
       </div>
 
       <div class="row two">
         <div class="card">
-          <h3>📈 Sales trend</h3>
+          <h3><svg class="ico"><use href="#i-chart"/></svg> Restaurant leaderboard</h3>
+          <p class="csub">Every seller, ranked by gross sales. Click a row to drop into that restaurant's own dashboard.</p>
+          <table><thead><tr><th>Restaurant</th><th class="num">Orders</th><th class="num">Gross</th><th class="num">Net</th><th></th></tr></thead>
+          <tbody id="leaderboard"></tbody></table>
+        </div>
+        <div class="card">
+          <h3><svg class="ico"><use href="#i-spark"/></svg> Ask across all restaurants</h3>
+          <p class="csub">Plain-English questions over the whole platform.</p>
+          <div class="ask-bar">
+            <input id="oq" placeholder='e.g. "Compare restaurants this month"'>
+            <button class="btn primary" id="orun"><svg class="ico"><use href="#i-play"/></svg> Run</button>
+          </div>
+          <div class="chips" id="ochips"></div>
+          <div class="answer small" id="oanswer"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ORGANIZATION: LIVE ACTIVITY ===================== -->
+    <section class="section" id="sec-org-activity">
+      <div class="card">
+        <h3><svg class="ico"><use href="#i-activity"/></svg> Live CDC activity</h3>
+        <p class="csub">Real change-data-capture events flowing from the source databases into the rollups — newest first. This is the pipeline that keeps the numbers fresh.</p>
+        <div class="formrow"><button class="btn" id="actRefresh"><svg class="ico"><use href="#i-refresh"/></svg> Refresh</button>
+          <span class="small muted" id="actMsg"></span></div>
+        <table><thead><tr><th>#</th><th>Restaurant</th><th>Change</th><th>Table</th><th>Order</th><th>LSN</th><th>Applied</th></tr></thead>
+        <tbody id="activityBody"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ===================== ORGANIZATION: DATABASES ===================== -->
+    <section class="section" id="sec-org-db">
+      <div class="card">
+        <h3><svg class="ico"><use href="#i-db"/></svg> Databases</h3>
+        <p class="csub">The whole architecture, visible: each restaurant's own <b>source</b> database (where live orders are written) and the central <b>summary</b> store (the pre-computed rollups the dashboard reads). Pick a database, then a table.</p>
+        <div class="dbwrap">
+          <div class="dblist" id="dbList"></div>
+          <div class="dbmain">
+            <div class="dbtabs" id="dbTables"></div>
+            <div class="dbmeta small muted" id="dbMeta"></div>
+            <div class="tablescroll"><table class="dbtable"><thead id="dbHead"></thead><tbody id="dbBody"></tbody></table></div>
+            <div class="formrow" style="margin-top:12px">
+              <button class="btn sm" id="dbPrev"><svg class="ico"><use href="#i-chev"/></svg> Prev</button>
+              <span class="small muted" id="dbPage"></span>
+              <button class="btn sm" id="dbNext">Next <svg class="ico" style="transform:rotate(-90deg)"><use href="#i-chev"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SELLER: DASHBOARD ===================== -->
+    <section class="section" id="sec-dashboard">
+      <div class="row kpis">
+        <div class="card kpi"><div class="k-top"><div class="plate"><svg class="ico"><use href="#i-cart"/></svg></div><div class="k-title">Total orders</div></div>
+          <div><span class="k-val num" id="kpiOrders">—</span> <span class="delta" id="dOrders"></span></div><div class="k-sub" id="kpiPeriod1"></div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate alt"><svg class="ico"><use href="#i-card"/></svg></div><div class="k-title">Gross sales</div></div>
+          <div><span class="k-val num" id="kpiGross">—</span> <span class="delta" id="dGross"></span></div><div class="k-sub" id="kpiPeriod2"></div></div>
+        <div class="card kpi"><div class="k-top"><div class="plate"><svg class="ico"><use href="#i-chart"/></svg></div><div class="k-title">Net sales</div></div>
+          <div><span class="k-val num" id="kpiNet">—</span> <span class="delta" id="dNet"></span></div><div class="k-sub" id="kpiPeriod3"></div></div>
+      </div>
+
+      <div class="row two">
+        <div class="card">
+          <h3><svg class="ico"><use href="#i-trend"/></svg> Sales trend</h3>
           <p class="csub" id="trendSub">Your daily net sales.</p>
           <svg class="trend" id="trend" viewBox="0 0 600 210" preserveAspectRatio="none"></svg>
         </div>
         <div class="card">
-          <h3>✨ Ask about your business</h3>
-          <p class="csub">Get instant answers about your restaurant.</p>
+          <h3><svg class="ico"><use href="#i-spark"/></svg> Ask about your business</h3>
+          <p class="csub">Instant answers about your restaurant.</p>
           <div class="ask-bar">
             <input id="qMini" placeholder='e.g. "Show my sales for last 7 days"'>
-            <button class="btn primary" id="runMini">▶ Run</button>
+            <button class="btn primary" id="runMini"><svg class="ico"><use href="#i-play"/></svg> Run</button>
           </div>
           <div class="chips" id="chipsMini"></div>
           <div class="answer small muted" id="ansMini"></div>
@@ -79,42 +175,42 @@
 
       <div class="row two" style="margin-top:20px;">
         <div class="card">
-          <h3>💡 Quick insights</h3>
+          <h3><svg class="ico"><use href="#i-bulb"/></svg> Quick insights</h3>
           <table><tbody id="insights"></tbody></table>
         </div>
         <div class="card">
-          <h3>🟢 Data status</h3>
+          <h3><svg class="ico"><use href="#i-shield"/></svg> Data status</h3>
           <div id="dataStatus" class="small muted">Loading…</div>
         </div>
       </div>
     </section>
 
-    <!-- ASK -->
+    <!-- ===================== SELLER: ASK ===================== -->
     <section class="section" id="sec-ask">
       <div class="card">
-        <h3>✨ Ask about your business</h3>
+        <h3><svg class="ico"><use href="#i-spark"/></svg> Ask about your business</h3>
         <p class="csub">Type a question in plain English. Answers come from your live sales data.</p>
         <div class="ask-bar">
           <input id="q" placeholder='e.g. "Order status breakdown for the last 30 days"'>
-          <button class="btn primary" id="run">▶ Run</button>
+          <button class="btn primary" id="run"><svg class="ico"><use href="#i-play"/></svg> Run</button>
         </div>
         <div class="chips" id="chips"></div>
         <div class="answer" id="answer"></div>
       </div>
       <div class="card" style="margin-top:20px;">
-        <h3>🕑 Recent questions</h3>
+        <h3><svg class="ico"><use href="#i-clock"/></svg> Recent questions</h3>
         <div id="recent" class="small muted">None yet.</div>
       </div>
     </section>
 
-    <!-- ORDERS -->
+    <!-- ===================== SELLER: ORDERS ===================== -->
     <section class="section" id="sec-orders">
       <div class="card">
-        <h3>🧾 Orders</h3>
+        <h3><svg class="ico"><use href="#i-receipt"/></svg> Orders</h3>
         <p class="csub">Create, update or remove orders for your restaurant. Changes update your numbers live.</p>
         <div class="formrow">
-          <input id="newAmount" type="number" min="1" placeholder="Amount (e.g. 25000 = ₹250)">
-          <button class="btn primary" id="createOrder">+ New order</button>
+          <input id="newAmount" type="number" min="1" placeholder="Amount in paise (25000 = ₹250)">
+          <button class="btn primary" id="createOrder"><svg class="ico"><use href="#i-plus"/></svg> New order</button>
           <span class="small muted" id="ordersMsg"></span>
         </div>
         <table><thead><tr><th>Order</th><th>Status</th><th class="num">Amount</th><th>Placed</th><th class="num">Actions</th></tr></thead>
@@ -122,18 +218,17 @@
       </div>
     </section>
 
-    <!-- DIAGNOSTICS (hidden; technical, for the hackathon) -->
+    <!-- DIAGNOSTICS (technical, for the hackathon) -->
     <details class="diag" id="diag" style="display:none;">
-      <summary>Diagnostics (technical) — SQL, provider, data integrity</summary>
+      <summary>Diagnostics (technical) — query engine, SQL, data integrity</summary>
       <div style="margin-top:12px;">
         <div class="small muted">Last query engine / SQL</div>
         <pre id="diagSql">—</pre>
-        <div class="small muted" style="margin-top:12px;">Data integrity (Receipts) — admin only</div>
+        <div class="small muted" style="margin-top:12px;">Data integrity (Receipts) — uses the operator key</div>
         <div class="formrow" style="margin-top:8px;">
-          <input id="adminKey" placeholder="admin key" value="">
-          <input id="reconDay" value="2026-07-02" style="width:120px">
-          <button class="btn sm" id="verify">Verify</button>
-          <button class="btn sm danger" id="repair">Repair day</button>
+          <input id="reconDay" value="2026-07-02" style="width:130px">
+          <button class="btn sm" id="verify"><svg class="ico"><use href="#i-shield"/></svg> Verify</button>
+          <button class="btn sm danger" id="repair"><svg class="ico"><use href="#i-refresh"/></svg> Repair day</button>
         </div>
         <pre id="diagRecon">—</pre>
       </div>

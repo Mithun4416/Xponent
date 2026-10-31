@@ -1,0 +1,8 @@
+{
+  "_comment": "Bonus B-4: derived metrics defined by config, not code. Add an object to 'metrics' and it appears in the API /tenants/{id}/orders/summary 'derived' list and on the dashboard — no redeploy of logic. 'expr' may use these variables only: orders, placed, shipped, cancelled, gross, net (gross/net are in major currency units). Operators: + - * / ( ). Division by zero yields 0. 'format' is one of currency | percent | number.",
+  "metrics": [
+    {"name": "avg_order_value", "label": "Avg. order value", "expr": "gross / orders", "format": "currency"},
+    {"name": "cancel_rate", "label": "Cancellation rate", "expr": "100 * cancelled / orders", "format": "percent"},
+    {"name": "net_margin", "label": "Net margin", "expr": "100 * net / gross", "format": "percent"}
+  ]
+}

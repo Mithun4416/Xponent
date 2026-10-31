@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import asyncpg
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from app.core import config
@@ -46,11 +47,17 @@ async def activity(tenant_id: int | None = None, limit: int = 50, x_admin_key: s
     limit = max(1, min(int(limit), 500))
     where = "WHERE tenant_id=$1" if tenant_id is not None else ""
     args = (tenant_id,) if tenant_id is not None else ()
-    rows = await owner.fetch(
-        f"SELECT id, tenant_id, op, tbl, order_id, lsn, commit_ts, applied_at "
-        f"FROM cdc_activity {where} ORDER BY id DESC LIMIT {limit}", *args)
+    try:
+        rows = await owner.fetch(
+            f"SELECT id, tenant_id, op, tbl, order_id, lsn, commit_ts, applied_at "
+            f"FROM cdc_activity {where} ORDER BY id DESC LIMIT {limit}", *args)
+    except asyncpg.UndefinedTableError:
+        # No events table yet (worker has not applied anything). Empty, not an error.
+        return {"events": [], "note": "No CDC events yet — the worker populates this on the first change."}
+    op_name = {"I": "INSERT", "U": "UPDATE", "D": "DELETE"}
     return {"events": [
-        {"id": r["id"], "tenant_id": r["tenant_id"], "op": r["op"], "table": r["tbl"],
+        {"id": r["id"], "tenant_id": r["tenant_id"],
+         "op": op_name.get(r["op"], r["op"]), "table": r["tbl"],
          "order_id": r["order_id"], "lsn": r["lsn"],
          "commit_ts": r["commit_ts"].isoformat() if r["commit_ts"] else None,
          "applied_at": r["applied_at"].isoformat() if r["applied_at"] else None}

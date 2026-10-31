@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 import asyncpg
 
 from app.core import config
+from app.services import metrics
 from app.services.range_decomposer import decompose
 
 _SORT_COL = {"gross_sales": "gross_revenue_cents", "net_sales": "net_revenue_cents", "qty_sold": "qty_sold"}
@@ -142,7 +143,17 @@ async def summary(summary_pool, primary_pool, tenant_id, frm, to) -> dict:
     count = sum(v[0] for v in acc.values())
     gross = sum(v[1] for v in acc.values())
     net = sum(v[2] for v in acc.values())
-    return {"order_count": count, "gross_sales": _cents(gross), "net_sales": _cents(net), "currency": config.CURRENCY}
+    # Base variables for config-defined derived metrics (Bonus B-4).
+    base = {
+        "orders": count,
+        "placed": acc.get("placed", [0])[0],
+        "shipped": acc.get("shipped", [0])[0],
+        "cancelled": acc.get("cancelled", [0])[0],
+        "gross": _cents(gross),
+        "net": _cents(net),
+    }
+    return {"order_count": count, "gross_sales": _cents(gross), "net_sales": _cents(net),
+            "currency": config.CURRENCY, "derived": metrics.compute(base)}
 
 
 async def by_status(summary_pool, primary_pool, tenant_id, frm, to) -> list[dict]:

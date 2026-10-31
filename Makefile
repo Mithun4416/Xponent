@@ -59,3 +59,11 @@ seed-demo:
 seed-bench:
 	$(PY) scripts/seed_dataset.py --rows 10000000 --tenants 100 --seed 42 \
 	  --dsn $${PRIMARY_SUPERUSER_URL:-postgresql://postgres:primary_password@localhost:5432/primary_db}
+
+# Live ingest demo: stream NEW orders into the source DBs so judges can watch the
+# rollups stay fresh under load. RATE defaults to 500 orders/sec for 60s. Reads
+# TENANT_SOURCES (per-tenant DBs) from the environment when set.
+load:
+	$(PY) scripts/load_generator.py --rate $${RATE:-500} --duration $${DURATION:-60} \
+	  --dsn $${PRIMARY_SUPERUSER_URL:-postgresql://postgres:primary_password@localhost:5432/primary_db} \
+	  --tenants $${TENANTS:-1,2}

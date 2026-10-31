@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.db import connect, disconnect
-from app.routers import admin, demo, health, org, query, status, tenants
+from app.routers import admin, demo, explorer, health, org, query, status, tenants
 
 _FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend")
 _DASHBOARD = os.path.join(_FRONTEND, "index.html")
@@ -35,6 +35,7 @@ app.include_router(org.router)
 app.include_router(query.router)
 app.include_router(status.router)
 app.include_router(demo.router)
+app.include_router(explorer.router)
 
 if os.path.isdir(_STATIC):
     app.mount("/static", StaticFiles(directory=_STATIC), name="static")

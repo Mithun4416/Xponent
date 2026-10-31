@@ -48,6 +48,18 @@ async def connect() -> None:
         pools.summary_owner = await asyncpg.create_pool(
             dsn=config.SUMMARY_DB_OWNER_URL, min_size=1, max_size=4, command_timeout=30.0
         )
+        # The live-activity feed reads cdc_activity. On a summary volume created
+        # before that table existed, the init schema never re-ran, so the owner
+        # ensures it here (idempotent) — otherwise /org/activity would 500.
+        await pools.summary_owner.execute(
+            "CREATE TABLE IF NOT EXISTS cdc_activity ("
+            " id BIGSERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, op VARCHAR(8) NOT NULL,"
+            " tbl VARCHAR(32) NOT NULL, order_id BIGINT, lsn BIGINT NOT NULL,"
+            " commit_ts TIMESTAMPTZ, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+        )
+        await pools.summary_owner.execute(
+            "CREATE INDEX IF NOT EXISTS idx_cdc_activity_at ON cdc_activity (applied_at DESC)"
+        )
 
 
 def primary_for_tenant(tenant_id: int) -> asyncpg.Pool:
