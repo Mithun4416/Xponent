@@ -42,10 +42,13 @@ done
 say "2/6 Provisioning per-tenant source databases (tenant_1, tenant_2)"
 python3 scripts/provision_tenant_dbs.py --admin-dsn "$PRIMARY_ADMIN" --dbs tenant_1,tenant_2
 
-say "3/6 Seeding synthetic data (~${ROWS} orders across 2 tenants)"
-python3 scripts/seed_dataset.py --rows "$ROWS" --tenants 2 --seed 42 --assign-tenant 1 \
+say "3/6 Seeding synthetic data (~${ROWS} orders per tenant, 2 tenants)"
+# Per-tenant-DB mode: each DB gets ONE tenant's catalog + ROWS orders. --assign-tenant
+# MUST pair with --tenants 1 (otherwise the tenants table is written once per generator
+# tenant → duplicate tenant_id PK violation).
+python3 scripts/seed_dataset.py --rows "$ROWS" --tenants 1 --seed 42 --assign-tenant 1 \
   --dsn postgresql://postgres:primary_password@localhost:5432/tenant_1 --manifest results/seed_t1.json
-python3 scripts/seed_dataset.py --rows "$ROWS" --tenants 2 --seed 42 --assign-tenant 2 \
+python3 scripts/seed_dataset.py --rows "$ROWS" --tenants 1 --seed 42 --assign-tenant 2 \
   --dsn postgresql://postgres:primary_password@localhost:5432/tenant_2 --manifest results/seed_t2.json
 
 say "4/6 Bootstrapping rollups at L0 (one CDC slot per tenant DB)"

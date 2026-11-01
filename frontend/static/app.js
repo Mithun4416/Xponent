@@ -319,6 +319,12 @@ async function loadDashboard(){
     `<div><span class="badge ${fok?"fresh":"stale"}"><span class="dotp"></span>${fok?"Up to date":"May be delayed"}</span></div>`+
     `<div style="margin-top:8px">Last updated: <b>${fresh?fresh.human_readable:"—"}</b></div>`+
     `<div>Query time: <b>${qms} ms</b></div>`;
+  // B-5 monitoring: live API latency percentiles over the recent window.
+  jx(`/api/v1/status/pipeline`).then(s=>{
+    const L=s&&s.query_latency_ms;
+    if(L&&L.count){ $("dataStatus").innerHTML+=
+      `<div style="margin-top:8px" class="small muted">API latency (last ${intf(L.count)}): p50 <b>${L.p50_ms}</b> · p95 <b>${L.p95_ms}</b> · p99 <b>${L.p99_ms}</b> ms</div>`; }
+  }).catch(()=>{});
 }
 function setDelta(id, cur, prev){
   const el=$(id);
@@ -355,7 +361,11 @@ function answerText(res){
   if(r.data) return `<b>${intf(r.data.order_count)}</b> orders, <b>${moneyFmt(r.data.gross_sales)}</b> gross and <b>${moneyFmt(r.data.net_sales)}</b> net.`;
   if(r.series){ const o=r.series.reduce((a,p)=>a+(p.order_count||0),0); return `<b>${intf(o)}</b> orders across <b>${r.series.length}</b> day(s).`; }
   if(r.categories) return r.categories.map(c=>`${c.status}: <b>${intf(c.order_count)}</b>`).join(" · ");
-  if(r.items) return `Top: `+r.items.slice(0,3).map(p=>`${p.product_name||("#"+p.product_id)} (${moneyFmt(p.gross_sales)})`).join(", ");
+  if(r.items){
+    if(!r.items.length) return "No products with sales in that period.";
+    return `Top ${r.items.length} product${r.items.length>1?"s":""}:<ol class="toplist">`+
+      r.items.map(p=>`<li>${p.product_name||("#"+p.product_id)} — <b>${moneyFmt(p.gross_sales)}</b> <span class="muted">(${intf(p.qty_sold)} sold)</span></li>`).join("")+`</ol>`;
+  }
   return "No matching data for that question.";
 }
 async function askQuery(input, ansEl, isFull, isOrg){

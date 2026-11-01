@@ -78,9 +78,13 @@ def _seed_tenants_products_customers(cur, p: GenParams, assign: int | None) -> N
           + (f" (all rows tenant_id={assign})" if assign is not None else ""))
 
     with cur.copy("COPY tenants (tenant_id, store_name, plan_tier) FROM STDIN") as cp:
+        seen: set[int] = set()
         for t in range(1, p.tenants + 1):
-            tier = "premium" if t <= max(1, p.tenants // 20) else "standard"
             wt = assign if assign is not None else t
+            if wt in seen:  # assign mode collapses every generator tenant to one id
+                continue
+            seen.add(wt)
+            tier = "premium" if t <= max(1, p.tenants // 20) else "standard"
             cp.write_row((wt, f"Store {wt}", tier))
 
     with cur.copy("COPY products (product_id, tenant_id, sku, product_name, unit_price_cents) FROM STDIN") as cp:

@@ -267,8 +267,14 @@ def parse_deterministic(question: str, now: datetime) -> QueryPlan:
     elif tenant is None:
         tenant = 1
     gran = "hour" if ("hour" in q or "hourly" in q) else "day"
-    lm = re.search(r"top\s*([0-9]+)", q)
-    limit = int(lm.group(1)) if lm else 10
+    # "top N" — digits ("top 10") or a number word ("top five"); default 10.
+    lm = re.search(r"top\s*(\d+)", q)
+    if lm:
+        limit = int(lm.group(1))
+    else:
+        wm = re.search(r"\btop\s+(" + "|".join(_WORDNUM) + r")\b", q)
+        limit = _WORDNUM[wm.group(1)] if wm else 10
+    limit = max(1, min(limit, 100))
     who = "all restaurants" if scope == "org" else f"Restaurant #{tenant}"
     return QueryPlan(scope, metric, tenant, frm, to, gran, limit,
                      f"{who} · {metric.replace('_', ' ')} · {label}", "rules")

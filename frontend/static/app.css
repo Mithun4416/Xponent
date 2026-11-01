@@ -206,6 +206,11 @@ table.dbtable tr:hover td{background:var(--surface-sub);}
 .cmpwin .note{color:#c7ccd6;font-weight:500;font-size:12.5px;}
 .cmpwin.mismatch{background:#7f1d1d;}
 
+/* ---- top-N product list (FR-3) ---- */
+ol.toplist{margin:8px 0 0;padding-left:22px;}
+ol.toplist li{padding:3px 0;font-size:13.5px;line-height:1.5;}
+ol.toplist li::marker{color:var(--primary);font-weight:700;}
+
 /* ---- sign-in gate ---- */
 .login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;
   background:radial-gradient(1100px 560px at 50% -12%, #20232b, var(--sidebar));}

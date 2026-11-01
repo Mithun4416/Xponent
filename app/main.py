@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import os
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.core import rtstats
 from app.core.db import connect, disconnect
 from app.routers import admin, demo, explorer, health, org, query, status, tenants
 
@@ -36,6 +38,20 @@ app.include_router(query.router)
 app.include_router(status.router)
 app.include_router(demo.router)
 app.include_router(explorer.router)
+
+
+@app.middleware("http")
+async def _record_latency(request: Request, call_next):
+    """Time every data query for the monitoring page's p50/p95/p99 (Bonus B-5)."""
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    try:
+        if request.url.path.startswith("/api/v1/") and "/status" not in request.url.path:
+            rtstats.record((time.perf_counter() - t0) * 1000.0)
+    except Exception:
+        pass  # monitoring must never affect the response
+    return response
+
 
 if os.path.isdir(_STATIC):
     app.mount("/static", StaticFiles(directory=_STATIC), name="static")
