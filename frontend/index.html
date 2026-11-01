@@ -36,10 +36,42 @@
   <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5 9-11"/></symbol>
 </svg>
 
-<div class="app">
+<!-- ===================== SIGN-IN GATE (demo) =====================
+  Routes each role to its own dashboard. A restaurant that signs in sees ONLY its
+  own data — no organization views, no restaurant switcher, no operator key. This
+  screen is UX/routing: the real tenant isolation is enforced server-side by
+  PostgreSQL Row-Level Security regardless of what is typed here. -->
+<div id="login" class="login">
+  <div class="login-card">
+    <img class="login-logo" src="/static/newlogo.png" alt="Xponent">
+    <div class="login-roles" id="loginRoles">
+      <button type="button" data-r="org" class="active"><svg class="ico"><use href="#i-building"/></svg> Organization</button>
+      <button type="button" data-r="seller"><svg class="ico"><use href="#i-store"/></svg> Restaurant</button>
+    </div>
+
+    <form id="loginOrg" class="login-form">
+      <label class="login-lbl">Operator key</label>
+      <input id="loginOrgKey" type="password" placeholder="operator key" value="xpo-admin-dev" autocomplete="off">
+      <button type="submit" class="btn primary login-go"><svg class="ico"><use href="#i-building"/></svg> Sign in as Organization</button>
+    </form>
+
+    <form id="loginSeller" class="login-form" style="display:none">
+      <label class="login-lbl">Restaurant</label>
+      <div id="loginSellerDD"></div>
+      <label class="login-lbl" style="margin-top:14px">Passkey</label>
+      <input id="loginSellerKey" type="password" placeholder="your restaurant's passkey" autocomplete="off">
+      <button type="submit" class="btn primary login-go"><svg class="ico"><use href="#i-store"/></svg> Sign in to my restaurant</button>
+    </form>
+
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-note">Demo sign-in. Tenant data is isolated on the server by PostgreSQL Row-Level Security — a restaurant can only ever read its own rows.</div>
+  </div>
+</div>
+
+<div class="app" id="appRoot" style="display:none">
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="logo"><img src="/static/logo.png" alt="Xponent"><span>Xponent</span></div>
+    <div class="logo"><img src="/static/newlogo.png" alt="Xponent"></div>
 
     <!-- Role switch: the platform owner vs a single restaurant (seller) -->
     <div class="roleseg" id="roleSeg">
@@ -62,6 +94,7 @@
         <div class="side-lbl">Operator key</div>
         <input id="adminKey" type="password" placeholder="admin key" value="xpo-admin-dev" autocomplete="off">
       </div>
+      <button class="btn sm signout" id="signOut" style="display:none"><svg class="ico"><use href="#i-refresh"/></svg> Sign out</button>
     </div>
   </aside>
 
@@ -109,6 +142,14 @@
           <div class="answer small" id="oanswer"></div>
         </div>
       </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3><svg class="ico"><use href="#i-clock"/></svg> Recompute vs Xponent — how much work each does</h3>
+        <p class="csub">The same platform-wide question — <b>total orders, gross &amp; net across every restaurant over the selected range</b> — answered two ways. <b>Recompute</b> re-derives it by scanning every raw order in all source databases (what a dashboard without rollups is forced to do). <b>Xponent</b> reads only the matching pre-computed rollup rows. Identical answer; the headline is how much <b>less data</b> Xponent touches.</p>
+        <div class="formrow"><button class="btn primary" id="cmpOrgRun"><svg class="ico"><use href="#i-play"/></svg> Run comparison</button>
+          <span class="small muted" id="cmpOrgMsg"></span></div>
+        <div class="cmpgrid" id="cmpOrgGrid"></div>
+      </div>
     </section>
 
     <!-- ===================== ORGANIZATION: LIVE ACTIVITY ===================== -->
@@ -116,7 +157,8 @@
       <div class="card">
         <h3><svg class="ico"><use href="#i-activity"/></svg> Live CDC activity</h3>
         <p class="csub">Real change-data-capture events flowing from the source databases into the rollups — newest first. This is the pipeline that keeps the numbers fresh.</p>
-        <div class="formrow"><button class="btn" id="actRefresh"><svg class="ico"><use href="#i-refresh"/></svg> Refresh</button>
+        <div class="formrow"><button class="btn primary" id="actSim"><svg class="ico"><use href="#i-plus"/></svg> Simulate orders</button>
+          <button class="btn" id="actRefresh"><svg class="ico"><use href="#i-refresh"/></svg> Refresh</button>
           <span class="small muted" id="actMsg"></span></div>
         <table><thead><tr><th>#</th><th>Restaurant</th><th>Change</th><th>Table</th><th>Order</th><th>LSN</th><th>Applied</th></tr></thead>
         <tbody id="activityBody"></tbody></table>
@@ -182,6 +224,14 @@
           <h3><svg class="ico"><use href="#i-shield"/></svg> Data status</h3>
           <div id="dataStatus" class="small muted">Loading…</div>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3><svg class="ico"><use href="#i-clock"/></svg> Recompute vs Xponent — how much work each does</h3>
+        <p class="csub">The same question — <b>your total orders, gross &amp; net sales over the selected range</b> — answered two ways. <b>Recompute</b> re-derives it by scanning every raw order in your source DB (what a dashboard without rollups must do on every load). <b>Xponent</b> reads only the matching pre-computed rollup rows. Identical answer; the headline is how much <b>less data</b> Xponent touches.</p>
+        <div class="formrow"><button class="btn primary" id="cmpSelRun"><svg class="ico"><use href="#i-play"/></svg> Run comparison</button>
+          <span class="small muted" id="cmpSelMsg"></span></div>
+        <div class="cmpgrid" id="cmpSelGrid"></div>
       </div>
     </section>
 

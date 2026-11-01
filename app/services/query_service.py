@@ -12,6 +12,7 @@ window is snapped to the grain. Top-N default ranking is gross (decision D2).
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
@@ -126,15 +127,17 @@ async def status_totals(summary_pool, primary_pool, tenant_id, frm, to) -> dict:
                     add(r["status"], r["c"], r["g"], r["n"])
 
     # Sub-minute edges come from the primary (per-row), bounded and tiny.
-    for a, b in plan.edges:
+    # Acquire the primary ONCE for all edges (was once per edge — wasted round-trips).
+    if plan.edges:
         async with primary_pool.acquire() as pconn:
-            for r in await pconn.fetch(
-                "SELECT status, COUNT(*)::bigint c, SUM(total_amount_cents)::bigint g, "
-                "SUM(CASE WHEN status <> 'cancelled' THEN total_amount_cents ELSE 0 END)::bigint n "
-                "FROM orders WHERE tenant_id=$1 AND created_at >= $2 AND created_at < $3 GROUP BY status",
-                tenant_id, a, b,
-            ):
-                add(r["status"], r["c"], r["g"], r["n"])
+            for a, b in plan.edges:
+                for r in await pconn.fetch(
+                    "SELECT status, COUNT(*)::bigint c, SUM(total_amount_cents)::bigint g, "
+                    "SUM(CASE WHEN status <> 'cancelled' THEN total_amount_cents ELSE 0 END)::bigint n "
+                    "FROM orders WHERE tenant_id=$1 AND created_at >= $2 AND created_at < $3 GROUP BY status",
+                    tenant_id, a, b,
+                ):
+                    add(r["status"], r["c"], r["g"], r["n"])
     return acc
 
 
@@ -217,3 +220,78 @@ async def top_products(summary_pool, tenant_id, frm, to, limit, sort_by) -> list
          "gross_sales": _cents(r["g"]), "net_sales": _cents(r["n"])}
         for i, r in enumerate(rows)
     ]
+
+
+# ------------------------------------------------------------------ #
+# Baseline comparison: "recompute from scratch" vs Xponent's rollups.
+# The naive path scans RAW orders in the source DB(s) — the work a dashboard
+# without pre-aggregation is forced to do, and the work Xponent avoids. Same
+# net/gross semantics as the rollups (net excludes cancelled) so the numbers
+# match and only the TIME differs.
+# ------------------------------------------------------------------ #
+_NAIVE_SQL = (
+    "SELECT COUNT(*)::bigint c, COALESCE(SUM(total_amount_cents),0)::bigint g, "
+    "COALESCE(SUM(CASE WHEN status <> 'cancelled' THEN total_amount_cents ELSE 0 END),0)::bigint n "
+    "FROM orders WHERE {where} created_at >= ${a} AND created_at < ${b}"
+)
+
+
+async def naive_tenant_scan(source_pool, tenant_id, frm, to) -> tuple[dict, int]:
+    """Recompute one tenant's totals by scanning its raw orders. Returns (totals, rows_scanned)."""
+    sql = _NAIVE_SQL.format(where="tenant_id=$1 AND", a=2, b=3)
+    async with source_pool.acquire() as conn:
+        r = await conn.fetchrow(sql, tenant_id, frm, to)
+    data = {"order_count": int(r["c"]), "gross_sales": _cents(r["g"]), "net_sales": _cents(r["n"])}
+    return data, int(r["c"])
+
+
+async def naive_org_scan(source_pools, frm, to) -> tuple[dict, int, int]:
+    """Recompute platform totals by scanning raw orders across every source DB.
+    Returns (totals, rows_scanned, source_db_count)."""
+    tot = [0, 0, 0]
+    rows = 0
+    sql = _NAIVE_SQL.format(where="", a=1, b=2)
+    dbs = list(dict.fromkeys(source_pools))  # distinct pools, order-preserving
+    for pool in dbs:
+        async with pool.acquire() as conn:
+            r = await conn.fetchrow(sql, frm, to)
+        tot[0] += int(r["c"]); tot[1] += int(r["g"]); tot[2] += int(r["n"]); rows += int(r["c"])
+    data = {"order_count": tot[0], "gross_sales": _cents(tot[1]), "net_sales": _cents(tot[2])}
+    return data, rows, len(dbs)
+
+
+async def rollup_rows_tenant(summary_pool, tenant_id, frm, to) -> int:
+    """How many pre-aggregated daily rollup rows the tenant read covers (the small
+    number Xponent touches instead of every raw order)."""
+    lo, hi = frm.date(), (to - timedelta(microseconds=1)).date()
+    async with summary_pool.acquire() as conn:
+        async with conn.transaction():
+            await _bind_tenant(conn, tenant_id)
+            n = await conn.fetchval(
+                "SELECT COUNT(*) FROM agg_orders_daily WHERE tenant_id=$1 AND day_bucket BETWEEN $2 AND $3",
+                tenant_id, lo, hi)
+    return int(n or 0)
+
+
+async def rollup_rows_org(owner_pool, frm, to) -> int:
+    """Pre-aggregated daily rollup rows the platform-wide read covers (all tenants)."""
+    lo, hi = frm.date(), (to - timedelta(microseconds=1)).date()
+    async with owner_pool.acquire() as conn:
+        n = await conn.fetchval(
+            "SELECT COUNT(*) FROM agg_orders_daily WHERE day_bucket BETWEEN $1 AND $2", lo, hi)
+    return int(n or 0)
+
+
+async def timed_best(factory, k: int = 5):
+    """Run an async call k times and return (last_result, best_ms). At sub-10ms a
+    single shot is dominated by connection/scheduler noise; the warm best is the
+    fair, representative latency — applied identically to both engines so neither
+    is favoured."""
+    best = None
+    result = None
+    for _ in range(max(1, k)):
+        t = time.perf_counter()
+        result = await factory()
+        ms = (time.perf_counter() - t) * 1000.0
+        best = ms if best is None else min(best, ms)
+    return result, round(best or 0.0, 1)

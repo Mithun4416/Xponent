@@ -114,6 +114,64 @@ function syncSeller(){
   $("greeting").textContent=`${greet}, ${n}`; $("greetSub").textContent="Here's how your business is doing.";
 }
 
+// ===================== auth gate (demo sign-in) =====================
+// Routes each role to its own dashboard. A restaurant that signs in is LOCKED to
+// its own data — no org views, no restaurant switcher, no operator key. The demo
+// per-restaurant passkey below would be an opaque, server-issued credential in
+// production; here the real isolation is enforced server-side by Row-Level
+// Security regardless of what is typed on this screen.
+const sellerPass = id => "restaurant" + id;
+let loginSellerTid = null;
+
+function showLogin(){
+  state.authRole = null;
+  $("appRoot").style.display = "none";
+  $("login").style.display = "flex";
+  $("signOut").style.display = "none";
+  $("loginErr").textContent = "";
+  $("loginSellerKey").value = "";
+  $("loginRoles").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.dataset.r==="org"));
+  $("loginOrg").style.display = "flex"; $("loginSeller").style.display = "none";
+}
+async function signInOrg(key){
+  $("loginErr").textContent = "";
+  if(!key){ $("loginErr").textContent = "Enter the operator key."; return; }
+  $("adminKey").value = key;
+  try{
+    const r = await fetch(`/api/v1/org/activity?limit=1`, {headers:{"X-Admin-Key":key}});
+    if(r.status === 403){ $("loginErr").textContent = "Invalid operator key."; return; }
+    // Any other reachable response (200, or 503 if owner pool off) means the key passed.
+  }catch(e){ $("loginErr").textContent = "Can't reach the server — is it running?"; return; }
+  enterApp("org");
+}
+function signInSeller(tid, key){
+  $("loginErr").textContent = "";
+  if(tid==null){ $("loginErr").textContent = "Pick a restaurant."; return; }
+  if(key !== sellerPass(tid)){ $("loginErr").textContent = "Wrong passkey for that restaurant."; return; }
+  state.tenant = Number(tid);
+  enterApp("seller");
+}
+function enterApp(role){
+  state.authRole = role;
+  $("login").style.display = "none";
+  $("appRoot").style.display = "flex";
+  $("signOut").style.display = "flex";
+  if(role === "seller"){
+    // Lock the whole UI to this one restaurant.
+    $("adminKey").value = "";                 // no operator powers for a seller
+    $("roleSeg").style.display = "none";       // can't flip to the org view
+    $("adminWrap").style.display = "none";     // no operator key field
+    if(sellerDD) sellerDD.set(String(state.tenant));
+    setMode("seller");
+    $("sellerSwitchWrap").style.display = "none";  // can't switch to another restaurant
+  }else{
+    $("roleSeg").style.display = "";
+    $("adminWrap").style.display = "";
+    setMode("org");
+  }
+}
+function signOut(){ showLogin(); }
+
 // ===================== ORGANIZATION: overview =====================
 async function loadOrg(){
   const [from,to]=rangeDates(state.range);
@@ -155,6 +213,22 @@ async function loadActivity(){
     ).join("")||`<tr><td colspan="7" class="muted">No events yet — create or change an order to see CDC flow.</td></tr>`;
     $("actMsg").textContent=`${(r.events||[]).length} most recent events`;
   }catch(e){ $("activityBody").innerHTML=`<tr><td colspan="7" class="err">${e.message.includes("403")?"Operator key required.":e.message}</td></tr>`; $("actMsg").textContent=""; }
+}
+// Generate real CDC traffic on demand. Writes test orders into tenants' OWN source
+// DBs via the admin demo endpoint; each write flows source → WAL → worker → rollup
+// and appends a row to cdc_activity, so the feed below fills in live.
+async function simulateActivity(){
+  if(!adminKey()){ $("actMsg").textContent="Enter the operator key in the sidebar first."; return; }
+  const btn=$("actSim"); btn.disabled=true;
+  const ids=state.sellerIds.length?state.sellerIds:[1,2];
+  const N=8; let made=0;
+  $("actMsg").innerHTML=`<span class="spin"></span> Writing ${N} test orders across ${ids.length} restaurant(s)…`;
+  for(let i=0;i<N;i++){
+    try{ await jx(`/api/v1/demo/order`,{method:"POST",headers:adminHdr({"Content-Type":"application/json"}),body:JSON.stringify({tenant_id:ids[i%ids.length]})}); made++; }
+    catch(e){ $("actMsg").textContent=(e.message.includes("403")?"Operator key required.":"Simulate failed: "+e.message); btn.disabled=false; return; }
+  }
+  $("actMsg").textContent=`Wrote ${made} orders — the worker is applying them. Refreshing…`;
+  setTimeout(()=>{ loadActivity(); btn.disabled=false; }, 1400);
 }
 
 // ===================== ORGANIZATION: database explorer =====================
@@ -271,7 +345,12 @@ function renderChips(el, input, ans, isFull){
 }
 function answerText(res){
   const r=res.result||{};
-  if(r.leaderboard) return r.leaderboard.map(s=>`R#${s.tenant_id}: <b>${moneyFmt(s.gross_sales)}</b>`).join(" · ");
+  if(r.leaderboard){
+    const list=r.leaderboard.map(s=>`R#${s.tenant_id}: <b>${moneyFmt(s.gross_sales)}</b> (${intf(s.order_count)} orders)`).join(" · ");
+    if(r.ranked){ const w=r.top||r.leaderboard[0];
+      return `Top: <b>Restaurant #${w.tenant_id}</b> — <b>${moneyFmt(w.gross_sales)}</b> gross${r.leaderboard.length>1?` · then ${list}`:``}`; }
+    return list;
+  }
   if(r.totals) return `<b>${intf(r.totals.order_count)}</b> orders · <b>${moneyFmt(r.totals.gross_sales)}</b> gross across <b>${r.tenants}</b> restaurants.`;
   if(r.data) return `<b>${intf(r.data.order_count)}</b> orders, <b>${moneyFmt(r.data.gross_sales)}</b> gross and <b>${moneyFmt(r.data.net_sales)}</b> net.`;
   if(r.series){ const o=r.series.reduce((a,p)=>a+(p.order_count||0),0); return `<b>${intf(o)}</b> orders across <b>${r.series.length}</b> day(s).`; }
@@ -300,6 +379,57 @@ async function askQuery(input, ansEl, isFull, isOrg){
 function renderRecent(){
   $("recent").innerHTML=state.recent.length? state.recent.map(q=>`<div style="padding:5px 0;border-bottom:1px solid var(--canvas)"><a href="#" data-q="${encodeURIComponent(q)}">${q}</a></div>`).join(""):"None yet.";
   $("recent").querySelectorAll("a").forEach(a=>a.onclick=ev=>{ev.preventDefault(); const q=decodeURIComponent(a.dataset.q); $("q").value=q; askQuery($("q"),$("answer"),true,false);});
+}
+
+// ===================== recompute vs Xponent =====================
+function cmpBox(kind, d, work){
+  const label=kind==="naive"?"Recompute from scratch":"Xponent (rollups)";
+  return `<div class="cmpbox ${kind==="naive"?"naive":"xpo"}">`+
+    `<div class="cmptag">${ico(kind==="naive"?"refresh":"spark")} ${label}</div>`+
+    `<div class="cmptime">${intf(d.ms)}<span class="u">ms</span></div>`+
+    `<div class="cmpwork">${work}</div>`+
+    `<div class="cmpres">${intf(d.order_count)} orders · ${moneyFmt(d.gross_sales)} gross</div></div>`;
+}
+function mult(x){ return x>=10?Math.round(x):x.toFixed(1); }
+function renderCompare(grid, r){
+  const nv=r.naive, xp=r.xponent;
+  const speed=(xp.ms>0)?(nv.ms/xp.ms):0;
+  // Work gap is the scale-independent truth: rows SCANNED vs rollup rows READ.
+  const workRatio=(xp.buckets_read>0)?(nv.rows_scanned/xp.buckets_read):0;
+  const workN=r.scope==="org"
+    ? `scanned ${intf(nv.rows_scanned)} raw orders across ${intf(r.source_dbs)} source DB(s)`
+    : `scanned ${intf(nv.rows_scanned)} raw orders`;
+  const workX=`read ${intf(xp.buckets_read)} pre-aggregated rollup row(s)`;
+  let verdict;
+  if(!r.match){
+    verdict=`Results differ — recompute and rollups disagree. This flags real drift; verify before trusting the numbers.`;
+  }else{
+    // Headline = the work Xponent avoids (always true). Time is secondary:
+    // meaningful only once the scan is big enough to cost more than the overhead.
+    const head=`${ico("check")} Identical result · Xponent read <span class="big">${mult(workRatio)}× less data</span> (${intf(xp.buckets_read)} rollup rows vs ${intf(nv.rows_scanned)} raw orders)`;
+    const tail=speed>=1.3
+      ? ` <span class="ok">— and ${mult(speed)}× faster (${intf(nv.ms)} ms → ${intf(xp.ms)} ms)</span>`
+      : ` <span class="note">— both are a few ms at this data size; the <b>time</b> gap opens up as rows grow (re-seed larger to see it widen).</span>`;
+    verdict=head+tail;
+  }
+  grid.innerHTML=cmpBox("naive",nv,workN)+cmpBox("xpo",xp,workX)+
+    `<div class="cmpwin ${r.match?"":"mismatch"}">${verdict}</div>`;
+}
+async function runCompare(scope){
+  const grid=scope==="org"?$("cmpOrgGrid"):$("cmpSelGrid");
+  const msg =scope==="org"?$("cmpOrgMsg"):$("cmpSelMsg");
+  const btn =scope==="org"?$("cmpOrgRun"):$("cmpSelRun");
+  const [from,to]=rangeDates(state.range);
+  btn.disabled=true; msg.innerHTML=`<span class="spin"></span> Running both engines over ${rangeLabel().toLowerCase()}…`;
+  try{
+    const path=scope==="org"
+      ? `/api/v1/org/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+      : `/api/v1/tenants/${state.tenant}/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const r=await jx(path,{headers:scope==="org"?adminHdr():sellerHdr()});
+    renderCompare(grid,r);
+    msg.textContent=`Over ${rangeLabel().toLowerCase()} · identical numbers · best of ${r.runs||5} warm runs.`;
+  }catch(e){ grid.innerHTML=`<div class="err small">${e.message.includes("403")?"Operator key required.":e.message}</div>`; msg.textContent=""; }
+  finally{ btn.disabled=false; }
 }
 
 // ===================== SELLER: orders CRUD =====================
@@ -368,7 +498,14 @@ async function loadSellers(){
     options:state.sellerIds.map(i=>({value:i,label:`Restaurant #${i}`})), value:state.tenant,
     onChange:v=>{ state.tenant=Number(v); syncSeller(); loadDashboard(); if($("sec-orders").classList.contains("on")) loadOrders(); },
   });
+  // Restaurant picker on the sign-in screen.
+  loginSellerTid=state.sellerIds[0];
+  loginSellerDD=makeDropdown($("loginSellerDD"), {
+    options:state.sellerIds.map(i=>({value:i,label:`Restaurant #${i}`})), value:loginSellerTid,
+    onChange:v=>{ loginSellerTid=Number(v); },
+  });
 }
+let loginSellerDD=null;
 function wire(){
   document.querySelectorAll("#roleSeg button").forEach(b=>b.onclick=()=>setMode(b.dataset.role));
   rangeDD=makeDropdown($("rangeDD"), {options:RANGE_OPTS, value:state.range,
@@ -385,16 +522,30 @@ function wire(){
   $("oq").addEventListener("keydown",e=>{if(e.key==="Enter")askQuery($("oq"),$("oanswer"),true,true);});
   $("createOrder").onclick=createOrder;
   $("actRefresh").onclick=loadActivity;
+  $("actSim").onclick=simulateActivity;
+  $("cmpOrgRun").onclick=()=>runCompare("org");
+  $("cmpSelRun").onclick=()=>runCompare("seller");
   $("dbPrev").onclick=()=>{ state.db.offset=Math.max(0,state.db.offset-state.db.limit); loadRows(); };
   $("dbNext").onclick=()=>{ state.db.offset+=state.db.limit; loadRows(); };
   $("verify").onclick=()=>recon("verify");
   $("repair").onclick=()=>recon("repair");
+  // --- sign-in gate ---
+  $("loginRoles").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    $("loginRoles").querySelectorAll("button").forEach(x=>x.classList.toggle("active", x===b));
+    const r=b.dataset.r;
+    $("loginOrg").style.display=r==="org"?"flex":"none";
+    $("loginSeller").style.display=r==="seller"?"flex":"none";
+    $("loginErr").textContent="";
+  });
+  $("loginOrg").addEventListener("submit", e=>{ e.preventDefault(); signInOrg(($("loginOrgKey").value||"").trim()); });
+  $("loginSeller").addEventListener("submit", e=>{ e.preventDefault(); signInSeller(loginSellerTid, ($("loginSellerKey").value||"").trim()); });
+  $("signOut").onclick=signOut;
 }
 
 (async function init(){
   wire();
   await loadSellers();
-  setMode("org");
+  showLogin();   // gate the app behind sign-in; enterApp() reveals the right dashboard
   setInterval(()=>{
     if($("sec-dashboard").classList.contains("on")) loadDashboard();
     else if($("sec-org-overview").classList.contains("on")) loadOrg();

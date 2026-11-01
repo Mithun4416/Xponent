@@ -61,7 +61,7 @@ def test_bare_month_is_whole_month():
 
 
 def test_keyword_ranges_still_work():
-    assert _range("my sales this week")[2] == "last 7 days"
+    assert _range("my sales this week")[2] == "this week"
     assert _range("orders today")[2] == "today"
     assert _range("orders yesterday")[2] == "yesterday"
 
@@ -78,6 +78,56 @@ def test_invalid_date_does_not_crash_and_falls_back():
     # 2026-13-40 is not a real date; parser ignores it and uses the default window.
     frm, to, label = _range("orders on 2026-13-40")
     assert label == "last 30 days", label
+
+
+def test_last_n_months_differ():
+    """The reported bug: 'last six months' and 'last seven months' must differ."""
+    six = _range("compare restaurants last six months")
+    seven = _range("compare restaurants last seven months")
+    assert six[0] != seven[0], (six, seven)
+    assert six[2] == "last 6 months" and seven[2] == "last 7 months", (six[2], seven[2])
+    # seven months reaches further back than six.
+    assert seven[0] < six[0]
+
+
+def test_relative_units():
+    assert _range("sales last 2 weeks")[2] == "last 2 weeks"
+    assert _range("orders past 3 days")[2] == "last 3 days"
+    assert _range("revenue last quarter")[2] == "last 1 quarter"
+    assert _range("orders in the last 5 hours")[2] == "last 5 hours"
+
+
+def test_named_month_and_span():
+    frm, to, label = _range("sales in july")
+    assert frm == datetime(2026, 7, 1, tzinfo=UTC)
+    assert to == datetime(2026, 8, 1, tzinfo=UTC)
+    frm, to, _ = _range("orders between june and august")
+    assert frm == datetime(2026, 6, 1, tzinfo=UTC)
+    assert to == datetime(2026, 9, 1, tzinfo=UTC)
+
+
+def test_calendar_periods():
+    # this year = Jan 1 .. now; last year = whole previous year.
+    assert _range("sales this year")[0] == datetime(2026, 1, 1, tzinfo=UTC)
+    ly = _range("sales last year")
+    assert ly[0] == datetime(2025, 1, 1, tzinfo=UTC) and ly[1] == datetime(2026, 1, 1, tzinfo=UTC)
+    # last month = previous full calendar month (Oct, since NOW is Nov 1).
+    lm = _range("orders last month")
+    assert lm[0] == datetime(2026, 10, 1, tzinfo=UTC) and lm[1] == datetime(2026, 11, 1, tzinfo=UTC)
+
+
+def test_org_vs_seller_routing():
+    def plan(qq):
+        return nlq.parse_deterministic(qq, NOW)
+    # Ranking restaurants -> org compare, NOT a random seller query.
+    assert plan("top tenant between two months").scope == "org"
+    assert plan("which restaurant sold most this month").metric == "org_compare"
+    assert plan("compare restaurants last six months").scope == "org"
+    # Product ranking stays a seller query.
+    assert plan("top products this month").metric == "top_products"
+    assert plan("top products this month").scope == "seller"
+    # A specific restaurant pins the seller.
+    assert plan("sales for restaurant 2 in july").tenant_id == 2
 
 
 def _run_all() -> int:

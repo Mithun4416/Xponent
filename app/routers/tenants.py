@@ -48,6 +48,37 @@ async def orders_summary(
             "verification": await tenant_badge(pools.summary, tenant)}
 
 
+@router.get("/compare")
+async def compare(
+    tenant_id: int = Path(..., ge=1),
+    from_ts: datetime = Query(..., alias="from"),
+    to_ts: datetime = Query(..., alias="to"),
+    tenant: int = Depends(get_tenant_context),
+    _rl=Depends(heavy_query_limit),
+):
+    """Same question, two engines: Xponent's rollup read vs a naive recompute that
+    scans the tenant's raw orders. Returns both results and the wall-clock time of
+    each — the numbers match; only the time differs (the whole point of rollups)."""
+    frm, to = _window(from_ts, to_ts)
+    src = primary_for_tenant(tenant)
+    runs = 5
+    xp, xp_ms = await query_service.timed_best(
+        lambda: query_service.summary(pools.summary, src, tenant, frm, to), runs)
+    buckets = await query_service.rollup_rows_tenant(pools.summary, tenant, frm, to)
+    (nv, rows), nv_ms = await query_service.timed_best(
+        lambda: query_service.naive_tenant_scan(src, tenant, frm, to), runs)
+    match = (xp["order_count"] == nv["order_count"]
+             and round(xp["gross_sales"], 2) == round(nv["gross_sales"], 2))
+    return {
+        "scope": "seller", "tenant_id": tenant, "from": frm.isoformat(), "to": to.isoformat(),
+        "runs": runs,
+        "xponent": {"order_count": xp["order_count"], "gross_sales": xp["gross_sales"],
+                    "net_sales": xp["net_sales"], "ms": xp_ms, "buckets_read": buckets},
+        "naive": {**nv, "ms": nv_ms, "rows_scanned": rows},
+        "match": match,
+    }
+
+
 @router.get("/orders/trends")
 async def orders_trends(
     tenant_id: int = Path(..., ge=1),

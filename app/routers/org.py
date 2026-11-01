@@ -75,3 +75,33 @@ async def overview(
     frm, to = _window(from_ts, to_ts)
     data = await query_service.org_overview(_owner(), frm, to)
     return {"from": frm.isoformat(), "to": to.isoformat(), **data}
+
+
+@router.get("/compare")
+async def compare(
+    from_ts: datetime = Query(..., alias="from"),
+    to_ts: datetime = Query(..., alias="to"),
+    x_admin_key: str | None = Header(default=None),
+):
+    """Platform-wide "recompute vs Xponent": Xponent reads rollups across all tenants;
+    the naive path scans raw orders in every source DB. Same totals; only time differs."""
+    _auth(x_admin_key)
+    frm, to = _window(from_ts, to_ts)
+    owner = _owner()
+    runs = 5
+    xp, xp_ms = await query_service.timed_best(
+        lambda: query_service.org_overview(owner, frm, to), runs)
+    buckets = await query_service.rollup_rows_org(owner, frm, to)
+    source_pools = list(pools.source_pools.values()) or ([pools.primary] if pools.primary else [])
+    (nv, rows, dbs), nv_ms = await query_service.timed_best(
+        lambda: query_service.naive_org_scan(source_pools, frm, to), runs)
+    xt = xp["totals"]
+    match = (xt["order_count"] == nv["order_count"]
+             and round(xt["gross_sales"], 2) == round(nv["gross_sales"], 2))
+    return {
+        "scope": "org", "from": frm.isoformat(), "to": to.isoformat(), "runs": runs,
+        "xponent": {"order_count": xt["order_count"], "gross_sales": xt["gross_sales"],
+                    "net_sales": xt["net_sales"], "ms": xp_ms, "buckets_read": buckets},
+        "naive": {**nv, "ms": nv_ms, "rows_scanned": rows},
+        "source_dbs": dbs, "match": match,
+    }

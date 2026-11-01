@@ -9,6 +9,7 @@ keyword parser produces the same plan shape — so the box always works offline.
 """
 from __future__ import annotations
 
+import calendar
 import json
 import re
 import time
@@ -89,25 +90,113 @@ def _explicit_dates(q: str) -> tuple[datetime, datetime, str] | None:
     return None
 
 
+# Number words ("last six months") and month names, so the parser understands
+# ranges a user actually types, not just the handful of canned phrases.
+_WORDNUM = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+            "twelve": 12, "couple": 2, "few": 3, "several": 3}
+_MONTHS = {"january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+           "july": 7, "august": 8, "september": 9, "october": 10, "november": 11,
+           "december": 12, "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7,
+           "aug": 8, "sept": 9, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
+_MONTH_ABBR = {i: calendar.month_abbr[i] for i in range(1, 13)}
+_MONTH_RE = re.compile(r"\b(" + "|".join(sorted(_MONTHS, key=len, reverse=True)) + r")\b")
+# "last/past 6 months", "two weeks", "3 days", "last year" (N defaults to 1).
+_REL_RE = re.compile(
+    r"(last|past|previous|recent|this)?\s*"
+    r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|couple|few|several)?\s*"
+    r"(hour|day|week|month|quarter|year)s?\b")
+
+
+def _sub_months(dt: datetime, n: int) -> datetime:
+    y, m = dt.year, dt.month - n
+    while m <= 0:
+        m += 12
+        y -= 1
+    while m > 12:
+        m -= 12
+        y += 1
+    return dt.replace(year=y, month=m, day=min(dt.day, calendar.monthrange(y, m)[1]))
+
+
+def _month_name_range(q: str) -> tuple[datetime, datetime, str] | None:
+    """A named month ("sales in July") or a span ("between June and August")."""
+    hits = [_MONTHS[m.group(1)] for m in _MONTH_RE.finditer(q)]
+    if not hits:
+        return None
+    yr = re.search(r"\b(20\d{2})\b", q)
+    year = int(yr.group(1)) if yr else _DATA_EPOCH.year  # demo data lives in 2026
+    lo, hi = (min(hits[0], hits[1]), max(hits[0], hits[1])) if len(hits) >= 2 else (hits[0], hits[0])
+    start = datetime(year, lo, 1, tzinfo=timezone.utc)
+    end = datetime(year + 1, 1, 1, tzinfo=timezone.utc) if hi == 12 else datetime(year, hi + 1, 1, tzinfo=timezone.utc)
+    label = f"{_MONTH_ABBR[lo]} {year}" if lo == hi else f"{_MONTH_ABBR[lo]}–{_MONTH_ABBR[hi]} {year}"
+    return start, end, label
+
+
+def _relative_range(q: str, now: datetime) -> tuple[datetime, datetime, str] | None:
+    """'last N days/weeks/months/quarters/years' (and singular 'last month')."""
+    best = None
+    for m in _REL_RE.finditer(q):
+        qual, numtok, unit = m.group(1), m.group(2), m.group(3)
+        if not qual and not numtok:          # bare "month" with no quantity → ignore
+            continue
+        if qual == "this":                    # calendar-aligned; handled elsewhere
+            continue
+        n = int(numtok) if (numtok and numtok.isdigit()) else _WORDNUM.get(numtok, 1)
+        best = (max(1, n), unit)
+    if not best:
+        return None
+    n, unit = best
+    plural = "" if n == 1 else "s"
+    if unit == "hour":
+        return now - timedelta(hours=n), now, f"last {n} hour{plural}"
+    if unit == "day":
+        return now - timedelta(days=n), now, f"last {n} day{plural}"
+    if unit == "week":
+        return now - timedelta(weeks=n), now, f"last {n} week{plural}"
+    if unit == "month":
+        return _sub_months(now, n), now, f"last {n} month{plural}"
+    if unit == "quarter":
+        return _sub_months(now, 3 * n), now, f"last {n} quarter{plural}"
+    return _sub_months(now, 12 * n), now, f"last {n} year{plural}"   # year
+
+
 def _resolve_range(q: str, now: datetime) -> tuple[datetime, datetime, str]:
+    def floor_day(x): return x.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # 1) explicit calendar dates the user typed win outright.
     ex = _explicit_dates(q)
     if ex:
         return ex
-    d = now
-    def floor_day(x): return x.replace(hour=0, minute=0, second=0, microsecond=0)
+    # 2) named months / month spans ("in July", "June to August").
+    mn = _month_name_range(q)
+    if mn:
+        return mn
+    # 3) calendar-aligned named periods.
+    if "all time" in q:
+        return _DATA_EPOCH, now + timedelta(days=1), "all time"
     if "yesterday" in q:
-        s = floor_day(d) - timedelta(days=1); return s, floor_day(d), "yesterday"
+        s = floor_day(now) - timedelta(days=1); return s, floor_day(now), "yesterday"
     if "today" in q:
-        return floor_day(d), d, "today"
-    if "last hour" in q or "past hour" in q:
-        return d - timedelta(hours=1), d, "last hour"
-    if "this week" in q or "last 7 days" in q or "past week" in q:
-        return d - timedelta(days=7), d, "last 7 days"
-    if "last 30 days" in q or "this month" in q or "past month" in q:
-        return d - timedelta(days=30), d, "last 30 days"
-    if "last 24" in q:
-        return d - timedelta(hours=24), d, "last 24 hours"
-    return d - timedelta(days=30), d, "last 30 days"
+        return floor_day(now), now, "today"
+    if "this week" in q:
+        return now - timedelta(days=7), now, "this week"
+    if "last month" in q:                      # previous FULL calendar month
+        first_this = floor_day(now).replace(day=1)
+        start = _sub_months(first_this, 1)
+        return start, first_this, f"{_MONTH_ABBR[start.month]} {start.year}"
+    if "this month" in q:                      # month-to-date
+        return floor_day(now).replace(day=1), now, "this month"
+    if "last year" in q:                       # previous FULL calendar year
+        return datetime(now.year - 1, 1, 1, tzinfo=timezone.utc), datetime(now.year, 1, 1, tzinfo=timezone.utc), f"{now.year - 1}"
+    if "this year" in q:
+        return datetime(now.year, 1, 1, tzinfo=timezone.utc), now, "this year"
+    # 4) relative "last N units".
+    rel = _relative_range(q, now)
+    if rel:
+        return rel
+    # 5) default.
+    return now - timedelta(days=30), now, "last 30 days"
 
 
 def _resolve_tenant(q: str) -> int | None:
@@ -136,27 +225,43 @@ def is_deterministic_confident(question: str) -> bool:
     """True when the rules parser clearly understands the question (a time phrase
     AND an intent). Such questions skip the LLM and answer in well under 10 ms."""
     q = question.lower()
-    has_time = any(t in q for t in _TIME_SIGNALS) or bool(_ISO_DATE.search(q)) or bool(_ISO_MONTH.search(q))
+    has_time = (any(t in q for t in _TIME_SIGNALS) or bool(_ISO_DATE.search(q))
+                or bool(_ISO_MONTH.search(q)) or bool(_MONTH_RE.search(q)))
     has_intent = any(t in q for t in _INTENT_SIGNALS)
     return has_time and has_intent
+
+
+_RANK_WORDS = ("top", "best", "most", "highest", "rank", "ranking", "winner",
+               "leader", "leading", "sold most", "biggest", "largest")
 
 
 def parse_deterministic(question: str, now: datetime) -> QueryPlan:
     q = question.lower()
     frm, to, label = _resolve_range(q, now)
-    is_org = any(w in q for w in ("compare", "across", "all restaurants", "all tenants", "every restaurant",
-                                  "which restaurant", "top restaurants", "leaderboard"))
     tenant = _resolve_tenant(q)
-    if is_org or (tenant is None and ("restaurant" in q or "tenant" in q) is False and "compare" in q):
+
+    is_product = any(w in q for w in ("product", "item", "dish", "menu"))
+    rank = any(w in q for w in _RANK_WORDS)
+    plural_entity = any(w in q for w in ("restaurants", "tenants", "sellers", "stores"))
+    explicit_org = any(w in q for w in ("compare", "across", "all restaurants", "all tenants",
+                                        "every restaurant", "which restaurant", "which tenant",
+                                        "which seller", "leaderboard"))
+    entity = any(w in q for w in ("restaurant", "tenant", "seller", "store"))
+    # Organization scope: comparing/ranking RESTAURANTS (not products), with no
+    # single tenant pinned. A product ranking stays a seller query.
+    is_org = tenant is None and not is_product and (explicit_org or plural_entity or (rank and entity))
+
+    if is_org:
         metric, scope = "org_compare", "org"
     elif any(w in q for w in ("trend", "daily", "per day", "over time", "each day", "by day")):
         metric, scope = "trends", "seller"
-    elif any(w in q for w in ("top", "best", "product", "item", "dish")):
+    elif is_product or (rank and not entity):
         metric, scope = "top_products", "seller"
     elif any(w in q for w in ("status", "breakdown", "cancel", "placed", "shipped", "delivered")):
         metric, scope = "by_status", "seller"
     else:
-        metric, scope = ("org_compare", "org") if is_org else ("summary", "seller")
+        metric, scope = "summary", "seller"
+
     if scope == "org":
         tenant = None
     elif tenant is None:
@@ -361,6 +466,16 @@ async def run_nlq(question: str, pinned_tenant: int | None = None) -> dict:
         if pools.summary_owner is None:
             raise RuntimeError("organization query needs the owner pool (SUMMARY_DB_OWNER_URL)")
         result = await query_service.org_overview(pools.summary_owner, plan.frm, plan.to)
+        # Ranking questions ("top/best restaurant") get the winner first, trimmed to
+        # the requested N; the leaderboard is already sorted by gross descending.
+        lb = result.get("leaderboard") or []
+        if lb:
+            ql = question.lower()
+            if any(w in ql for w in _RANK_WORDS):
+                n = int(m.group(1)) if (m := re.search(r"top\s+(\d+)", ql)) else 1
+                result["top"] = lb[0]
+                result["leaderboard"] = lb[: max(1, n)]
+                result["ranked"] = True
     else:
         t = plan.tenant_id
         if plan.metric == "trends":

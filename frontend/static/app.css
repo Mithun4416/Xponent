@@ -18,8 +18,8 @@ button{cursor:pointer;}
 
 /* Sidebar */
 .sidebar{width:240px;flex:0 0 240px;background:var(--sidebar);color:#e7e9ee;display:flex;flex-direction:column;padding:18px 14px;position:sticky;top:0;height:100vh;}
-.logo{display:flex;align-items:center;gap:10px;padding:6px 8px 18px;font-weight:700;font-size:18px;}
-.logo img{width:26px;height:26px;border-radius:6px;}
+.logo{display:flex;align-items:center;justify-content:center;padding:14px 8px 20px;}
+.logo img{width:134px;height:134px;max-width:100%;border-radius:16px;display:block;}
 .nav{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
 .nav a{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:12px;color:#9ca3af;text-decoration:none;font-weight:600;font-size:14px;}
 .nav a:hover{color:#fff;background:rgba(255,255,255,.05);}
@@ -166,6 +166,9 @@ svg.trend{width:100%;height:210px;display:block;}
 
 /* ---- database explorer ---- */
 .dbwrap{display:grid;grid-template-columns:260px 1fr;gap:18px;margin-top:6px;}
+/* min-width:0 lets the 1fr track shrink so wide tables scroll INSIDE .tablescroll
+   instead of blowing the column out past the viewport (last col clipped). */
+.dbmain{min-width:0;}
 @media(max-width:900px){.dbwrap{grid-template-columns:1fr;}}
 .dblist{display:flex;flex-direction:column;gap:8px;}
 .dbitem{border:1px solid var(--border);border-radius:12px;padding:11px 12px;cursor:pointer;background:var(--surface-sub);}
@@ -185,3 +188,43 @@ table.dbtable th{position:sticky;top:0;background:var(--surface-sub);z-index:1;w
 table.dbtable td{white-space:nowrap;padding:7px 10px;font-variant-numeric:tabular-nums;}
 table.dbtable tr:hover td{background:var(--surface-sub);}
 .coltype{font-weight:400;color:var(--faint);font-size:10px;text-transform:none;letter-spacing:0;}
+
+/* ---- recompute-vs-Xponent comparison ---- */
+.cmpgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
+@media(max-width:700px){.cmpgrid{grid-template-columns:1fr;}}
+.cmpbox{border:1px solid var(--border);border-radius:14px;padding:16px 18px;background:var(--surface-sub);}
+.cmpbox.naive{border-color:#f3b4b5;background:#fdf1f1;}
+.cmpbox.xpo{border-color:#bfe0c8;background:var(--ok-bg);}
+.cmpbox .cmptag{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.cmpbox.naive .cmptag{color:var(--primary);} .cmpbox.xpo .cmptag{color:var(--ok);}
+.cmpbox .cmptime{font-size:34px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+.cmpbox .cmptime .u{font-size:16px;font-weight:600;color:var(--muted);margin-left:4px;}
+.cmpbox .cmpwork{color:var(--muted);font-size:12px;margin-top:4px;}
+.cmpbox .cmpres{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);font-size:13px;font-weight:600;}
+.cmpwin{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;padding:12px 16px;border-radius:12px;background:var(--ink);color:#fff;font-weight:700;}
+.cmpwin .big{font-size:20px;color:var(--primary-2);} .cmpwin .ok{color:#67e08a;font-weight:600;font-size:13px;}
+.cmpwin .note{color:#c7ccd6;font-weight:500;font-size:12.5px;}
+.cmpwin.mismatch{background:#7f1d1d;}
+
+/* ---- sign-in gate ---- */
+.login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(1100px 560px at 50% -12%, #20232b, var(--sidebar));}
+.login-card{width:100%;max-width:380px;background:var(--surface);border-radius:20px;
+  box-shadow:0 24px 70px -12px rgba(0,0,0,.55);padding:28px 26px;}
+.login-logo{display:block;width:104px;height:104px;margin:0 auto 20px;border-radius:18px;
+  background:var(--sidebar);padding:12px;} /* logo art is built for dark; tile keeps it legible on the white card */
+.login-roles{display:flex;gap:4px;background:var(--surface-sub);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:20px;}
+.login-roles button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:0;background:transparent;color:var(--muted);font-weight:600;font-size:13px;padding:9px 6px;border-radius:9px;cursor:pointer;}
+.login-roles button .ico{width:16px;height:16px;}
+.login-roles button.active{background:var(--primary);color:#fff;box-shadow:var(--glow);}
+.login-form{display:flex;flex-direction:column;}
+.login-lbl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.login-form input{background:var(--surface);border:1px solid #dde1ec;border-radius:var(--r-btn);padding:11px 13px;font-size:14px;}
+.login-form input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(229,56,59,.12);}
+.login-go{margin-top:18px;justify-content:center;}
+.login-err{color:var(--primary);font-size:13px;font-weight:600;margin-top:12px;min-height:18px;text-align:center;}
+.login-note{color:var(--faint);font-size:11px;line-height:1.5;margin-top:16px;text-align:center;}
+.login .dd-btn{width:100%;}
+.signout{margin-top:12px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+  background:#20232b;border-color:#2c2f38;color:#e7e9ee;}
+.signout:hover{background:#2a2e38;}
