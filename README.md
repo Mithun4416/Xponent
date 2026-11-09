@@ -75,8 +75,9 @@ ROWS=1000000 ./scripts/quickstart.sh
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\pip.exe install -r scripts\requirements.txt
-.\scripts\quickstart.ps1                       # defaults: 50k rows, 5 tenants
-.\scripts\quickstart.ps1 -Rows 200000 -Tenants 10
+.\scripts\quickstart.ps1                                   # 50k orders across 5 tenants (skewed)
+.\scripts\quickstart.ps1 -OrdersPerTenant 1000000          # exactly 1M orders for EVERY tenant (5M total)
+.\scripts\quickstart.ps1 -OrdersPerTenant 1000000 -Tenants 10
 ```
 
 </details>

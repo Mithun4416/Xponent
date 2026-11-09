@@ -51,6 +51,11 @@ for ($i = 0; $i -lt 60; $i++) {
     if ($i -eq 59) { throw "PostgreSQL containers did not become ready." }
 }
 
+# Init scripts only run on a fresh volume; (re)apply the API's writer role so older volumes get it too.
+Step "Ensuring the API's app_writer role exists"
+Get-Content db\primary\005_app_writer.sql -Raw | docker compose exec -T pg-primary psql -U postgres -d primary_db -q -v ON_ERROR_STOP=1
+Check "app_writer role"
+
 # Drop the replication slot so the bulk load isn't decoded/retained, then clear old data.
 Step "Dropping replication slot and truncating existing data"
 docker compose exec -T pg-primary psql -U postgres -d primary_db -q -c `

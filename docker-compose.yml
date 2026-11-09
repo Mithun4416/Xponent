@@ -112,6 +112,7 @@ services:
       PRIMARY_DB_URL: "postgresql://postgres:primary_password@pg-primary:5432/primary_db"
       SUMMARY_DB_URL: "postgresql://agg_user:agg_password@pg-summary:5432/agg_db"
       CDC_SLOT_NAME: "agg_slot"
+      PYTHONUNBUFFERED: "1" # print() goes to `docker compose logs` immediately
       # Default topology: all tenants share primary_db and are separated by
       # tenant_id. Set TENANT_SOURCES only when using dedicated source DBs.
     restart: on-failure
@@ -132,7 +133,9 @@ services:
     environment:
       SUMMARY_DB_URL: "postgresql://agg_reader:agg_reader_pass@pg-summary:5432/agg_db" # reader role (RLS-constrained)
       SUMMARY_DB_OWNER_URL: "postgresql://agg_user:agg_password@pg-summary:5432/agg_db" # owner — admin Receipts repair only
-      PRIMARY_DB_URL: "postgresql://replication_reader:rep_pass@pg-primary:5432/primary_db"
+      # app_writer (db/primary/005_app_writer.sql): the Orders tab writes to the source DB;
+      # replication_reader is SELECT-only and would fail with "permission denied".
+      PRIMARY_DB_URL: "postgresql://app_writer:app_writer_pass@pg-primary:5432/primary_db"
       REDIS_URL: "redis://redis-cache:6379/0"
       AUTH_DEV_MODE: "true"
       ADMIN_KEY: "xpo-admin-dev"
