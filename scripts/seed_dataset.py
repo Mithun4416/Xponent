@@ -53,7 +53,10 @@ def _git_sha() -> str:
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Deterministic Xponent synthetic seeder")
-    ap.add_argument("--rows", type=int, required=True, help="total order count")
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--rows", type=int, help="total order count, split across tenants with a power-law skew")
+    g.add_argument("--orders-per-tenant", type=int,
+                   help="exactly this many orders for EVERY tenant (total = this x --tenants)")
     ap.add_argument("--tenants", type=int, required=True)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--span-days", type=int, default=120)
@@ -138,8 +141,10 @@ def _seed_orders_and_items(cur, p: GenParams, batch: int, assign: int | None) ->
 
 def main(argv: list[str]) -> int:
     a = _parse_args(argv)
+    even = a.orders_per_tenant is not None
+    rows = a.orders_per_tenant * a.tenants if even else a.rows
     p = GenParams(
-        rows=a.rows, tenants=a.tenants, seed=a.seed, span_days=a.span_days,
+        rows=rows, tenants=a.tenants, even_split=even, seed=a.seed, span_days=a.span_days,
         products_per_tenant=a.products_per_tenant, customers_per_tenant=a.customers_per_tenant,
         items_per_order_max=a.items_per_order_max, cancel_frac=a.cancel_frac,
         skew_alpha=a.skew_alpha, sub_hour_density=not a.no_sub_hour_density,
@@ -161,6 +166,8 @@ def main(argv: list[str]) -> int:
             "products_per_tenant": p.products_per_tenant, "customers_per_tenant": p.customers_per_tenant,
             "items_per_order_max": p.items_per_order_max, "cancel_frac": p.cancel_frac,
             "skew_alpha": p.skew_alpha, "sub_hour_density": p.sub_hour_density,
+            "even_split": p.even_split,
+            "orders_per_tenant": a.orders_per_tenant,
             "start": p.start.isoformat(),
         },
         "counts": {

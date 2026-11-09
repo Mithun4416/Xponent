@@ -42,6 +42,9 @@ class GenParams:
     skew_alpha: float = 1.16
     sub_hour_density: bool = True
     start: datetime = DEFAULT_START
+    # Equal split: order N goes to tenant ((N-1) % tenants) + 1, so every tenant
+    # gets exactly rows / tenants orders (instead of the power-law skew).
+    even_split: bool = False
 
 
 def pareto_weights(n_tenants: int, alpha: float) -> list[float]:
@@ -121,7 +124,9 @@ def gen_order(order_id: int, p: GenParams, cum_weights: list[float]) -> Order:
     via the mutation stream so retraction is exercised as a live transition.
     """
     r = _order_rng(p.seed, order_id)
-    tenant_id = pick_tenant(r, cum_weights)
+    tenant_id = pick_tenant(r, cum_weights)  # always draw, so the RNG stream is unchanged
+    if p.even_split:
+        tenant_id = (order_id - 1) % p.tenants + 1
 
     # Timestamp to the second (sub_hour_density keeps sub-minute offsets too, so
     # non-aligned ranges have non-empty boundary buckets and AC-02 isn't vacuous).

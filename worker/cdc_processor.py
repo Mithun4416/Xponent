@@ -158,9 +158,25 @@ def _stream(cur, summary, slot: str, tenant_override: int | None, last_applied: 
             do_flush()
 
 
+def _connect_summary(label: str = "cdc") -> psycopg.Connection:
+    """Connect to the summary DB, waiting with backoff until it is reachable.
+
+    On Docker restarts the worker can start before pg-summary's DNS name or
+    port is ready; crashing there loses the whole process, so wait instead.
+    """
+    backoff = 1.0
+    while True:
+        try:
+            return psycopg.connect(SUMMARY_DB_URL, autocommit=True)
+        except psycopg.OperationalError as e:
+            print(f"[{label}] summary DB not reachable yet ({e}); retrying in {backoff:.0f}s")
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 10.0)
+
+
 def _ensure_activity_table() -> None:
     """Create cdc_activity if missing (the summary volume predates this table)."""
-    with psycopg.connect(SUMMARY_DB_URL, autocommit=True) as conn:
+    with _connect_summary() as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS cdc_activity ("
             " id BIGSERIAL PRIMARY KEY, tenant_id INTEGER NOT NULL, op VARCHAR(8) NOT NULL,"
@@ -172,12 +188,15 @@ def _ensure_activity_table() -> None:
 def run_source(source: SourceEntry, stop: threading.Event) -> None:
     """Stream one tenant source into the central summary, reconnecting with backoff.
     One of these runs per registry entry (one per tenant database)."""
-    summary = psycopg.connect(SUMMARY_DB_URL, autocommit=True)
+    summary = _connect_summary(f"cdc:{source.label}")
     backoff = 1.0
     try:
         while not stop.is_set():
             repl = None
             try:
+                if summary.closed or summary.broken:
+                    # The summary DB restarted under us: reconnect before resuming.
+                    summary = _connect_summary(f"cdc:{source.label}")
                 repl = psycopg2.connect(source.dsn, connection_factory=LogicalReplicationConnection)
                 cur = repl.cursor()
                 last_applied = _load_checkpoint(summary, source.slot)
