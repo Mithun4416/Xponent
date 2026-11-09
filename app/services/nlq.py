@@ -440,7 +440,7 @@ async def _plan_via_provider(question: str, tenant_ids: list[int], now: datetime
 
 
 async def run_nlq(question: str, pinned_tenant: int | None = None) -> dict:
-    from app.core.db import pools, primary_for_tenant, slot_for_tenant
+    from app.core.db import all_source_pools, pools, primary_for_tenant, slot_for_tenant
     from app.services import query_service
     from app.services.freshness import freshness_block
 
@@ -471,7 +471,7 @@ async def run_nlq(question: str, pinned_tenant: int | None = None) -> dict:
     if plan.scope == "org":
         if pools.summary_owner is None:
             raise RuntimeError("organization query needs the owner pool (SUMMARY_DB_OWNER_URL)")
-        result = await query_service.org_overview(pools.summary_owner, plan.frm, plan.to)
+        result = await query_service.org_overview(pools.summary_owner, plan.frm, plan.to, all_source_pools())
         # Ranking questions ("top/best restaurant") get the winner first, trimmed to
         # the requested N; the leaderboard is already sorted by gross descending.
         lb = result.get("leaderboard") or []

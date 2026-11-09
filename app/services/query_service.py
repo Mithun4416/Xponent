@@ -12,6 +12,7 @@ window is snapped to the grain. Top-N default ranking is gross (decision D2).
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -30,12 +31,21 @@ def _cents(v) -> float:
     return round(int(v or 0) / 100.0, 2)
 
 
-async def org_overview(owner_pool, frm, to) -> dict:
-    """ORGANIZATION-WIDE query (the platform owner's view): aggregate across ALL
-    sellers/tenants. Uses the owner pool (bypasses RLS) and groups by tenant_id.
-    Bucket-grain (day/hour/minute) — sub-minute edges are omitted here since an
-    owner leaderboard doesn't need per-second precision.
-    """
+_ORG_GRAIN_SQL = {
+    "day": "SELECT tenant_id, order_count, gross_sales_cents, net_sales_cents FROM agg_orders_daily "
+           "WHERE day_bucket BETWEEN ${a} AND ${b}",
+    "hour": "SELECT tenant_id, order_count, gross_sales_cents, net_sales_cents FROM agg_orders_hourly "
+            "WHERE hour_bucket >= ${a} AND hour_bucket < ${b}",
+    "minute": "SELECT tenant_id, order_count, gross_sales_cents, net_sales_cents FROM agg_orders_minutely "
+              "WHERE minute_bucket >= ${a} AND minute_bucket < ${b}",
+}
+
+
+async def org_totals(owner_pool, source_pools, frm, to) -> dict[int, list[int]]:
+    """Per-tenant [count, gross_cents, net_cents] over [frm, to) across ALL tenants,
+    EXACT for any range: day/hour/minute pieces come from the rollups in ONE
+    round trip (a single UNION ALL), and the sub-minute edges — at most two tiny
+    slices — come from the source DB(s), exactly as the per-tenant path does."""
     plan = decompose(frm, to)
     acc: dict[int, list[int]] = {}
 
@@ -45,24 +55,60 @@ async def org_overview(owner_pool, frm, to) -> dict:
         v[1] += int(g or 0)
         v[2] += int(n or 0)
 
-    grain_queries = []
-    for d0, d1 in plan.days:
-        grain_queries.append((
-            "SELECT tenant_id, SUM(order_count)::bigint c, SUM(gross_sales_cents)::bigint g, SUM(net_sales_cents)::bigint n "
-            "FROM agg_orders_daily WHERE day_bucket BETWEEN $1 AND $2 GROUP BY tenant_id", (d0, d1)))
-    for a, b in plan.hours:
-        grain_queries.append((
-            "SELECT tenant_id, SUM(order_count)::bigint c, SUM(gross_sales_cents)::bigint g, SUM(net_sales_cents)::bigint n "
-            "FROM agg_orders_hourly WHERE hour_bucket >= $1 AND hour_bucket < $2 GROUP BY tenant_id", (a, b)))
-    for a, b in plan.minutes:
-        grain_queries.append((
-            "SELECT tenant_id, SUM(order_count)::bigint c, SUM(gross_sales_cents)::bigint g, SUM(net_sales_cents)::bigint n "
-            "FROM agg_orders_minutely WHERE minute_bucket >= $1 AND minute_bucket < $2 GROUP BY tenant_id", (a, b)))
+    parts, args = [], []
+    for grain, pieces in (("day", plan.days), ("hour", plan.hours), ("minute", plan.minutes)):
+        for lo, hi in pieces:
+            args += [lo, hi]
+            parts.append(_ORG_GRAIN_SQL[grain].format(a=len(args) - 1, b=len(args)))
 
+    async def rollups():
+        if not parts:
+            return []
+        sql = ("SELECT tenant_id, SUM(order_count)::bigint c, SUM(gross_sales_cents)::bigint g, "
+               "SUM(net_sales_cents)::bigint n FROM (" + " UNION ALL ".join(parts) + ") x GROUP BY tenant_id")
+        async with owner_pool.acquire() as conn:
+            return await conn.fetch(sql, *args)
+
+    async def edges(pool):
+        # All sub-minute slices in ONE round trip per source DB. Each slice joins
+        # through `tenants` so Postgres can range-scan the existing
+        # (tenant_id, created_at) index per tenant. Filtering on created_at alone
+        # (or OR-ing the slices) can't use that index and seq-scans every order
+        # (~400 ms at 5M rows vs <1 ms) — without adding an index to the OLTP DB.
+        eargs = [t for a, b in plan.edges for t in (a, b)]
+        sql = " UNION ALL ".join(
+            "SELECT o.tenant_id, o.status, o.total_amount_cents FROM tenants t JOIN orders o "
+            f"ON o.tenant_id = t.tenant_id AND o.created_at >= ${2 * i + 1} AND o.created_at < ${2 * i + 2}"
+            for i in range(len(plan.edges)))
+        async with pool.acquire() as conn:
+            return await conn.fetch(
+                "SELECT tenant_id, COUNT(*)::bigint c, SUM(total_amount_cents)::bigint g, "
+                "SUM(CASE WHEN status <> 'cancelled' THEN total_amount_cents ELSE 0 END)::bigint n "
+                f"FROM ({sql}) e GROUP BY tenant_id", *eargs)
+
+    # Rollups and edge slices live in different databases: fetch them concurrently.
+    jobs = [rollups()] + ([edges(p) for p in dict.fromkeys(source_pools)] if plan.edges else [])
+    for rows in await asyncio.gather(*jobs):
+        for r in rows:
+            add(r["tenant_id"], r["c"], r["g"], r["n"])
+    return acc
+
+
+def org_totals_summary(acc: dict[int, list[int]]) -> dict:
+    return {
+        "order_count": sum(v[0] for v in acc.values()),
+        "gross_sales": _cents(sum(v[1] for v in acc.values())),
+        "net_sales": _cents(sum(v[2] for v in acc.values())),
+    }
+
+
+async def org_overview(owner_pool, frm, to, source_pools=()) -> dict:
+    """ORGANIZATION-WIDE query (the platform owner's view): aggregate across ALL
+    sellers/tenants. Uses the owner pool (bypasses RLS) and groups by tenant_id.
+    Exact for any range when `source_pools` is given (sub-minute edges included).
+    """
+    acc = await org_totals(owner_pool, source_pools, frm, to)
     async with owner_pool.acquire() as conn:
-        for sql, args in grain_queries:
-            for r in await conn.fetch(sql, *args):
-                add(r["tenant_id"], r["c"], r["g"], r["n"])
         ver = await conn.fetchrow(
             "SELECT COUNT(*)::bigint total, COUNT(*) FILTER (WHERE is_corrupted)::bigint corrupted FROM bucket_digests")
 
@@ -70,11 +116,7 @@ async def org_overview(owner_pool, frm, to) -> dict:
         ({"tenant_id": t, "order_count": v[0], "gross_sales": _cents(v[1]), "net_sales": _cents(v[2])}
          for t, v in acc.items()),
         key=lambda x: x["gross_sales"], reverse=True)
-    totals = {
-        "order_count": sum(v[0] for v in acc.values()),
-        "gross_sales": _cents(sum(v[1] for v in acc.values())),
-        "net_sales": _cents(sum(v[2] for v in acc.values())),
-    }
+    totals = org_totals_summary(acc)
     return {
         "scope": "organization",
         "currency": config.CURRENCY,
@@ -274,11 +316,18 @@ async def rollup_rows_tenant(summary_pool, tenant_id, frm, to) -> int:
 
 
 async def rollup_rows_org(owner_pool, frm, to) -> int:
-    """Pre-aggregated daily rollup rows the platform-wide read covers (all tenants)."""
-    lo, hi = frm.date(), (to - timedelta(microseconds=1)).date()
+    """Pre-aggregated rollup rows the platform-wide read actually touches (all tenants,
+    every day/hour/minute piece of the decomposed range)."""
+    plan = decompose(frm, to)
+    parts, args = [], []
+    for grain, pieces in (("day", plan.days), ("hour", plan.hours), ("minute", plan.minutes)):
+        for lo, hi in pieces:
+            args += [lo, hi]
+            parts.append(_ORG_GRAIN_SQL[grain].format(a=len(args) - 1, b=len(args)))
+    if not parts:
+        return 0
     async with owner_pool.acquire() as conn:
-        n = await conn.fetchval(
-            "SELECT COUNT(*) FROM agg_orders_daily WHERE day_bucket BETWEEN $1 AND $2", lo, hi)
+        n = await conn.fetchval("SELECT COUNT(*) FROM (" + " UNION ALL ".join(parts) + ") x", *args)
     return int(n or 0)
 
 

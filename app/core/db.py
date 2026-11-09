@@ -60,6 +60,20 @@ async def connect() -> None:
         await pools.summary_owner.execute(
             "CREATE INDEX IF NOT EXISTS idx_cdc_activity_at ON cdc_activity (applied_at DESC)"
         )
+        # Platform-wide reads filter on the time bucket across ALL tenants; the
+        # primary keys lead with tenant_id, so without these they scan every row.
+        # Idempotent, and also in db/summary/005_org_indexes.sql for fresh volumes.
+        for tbl, col in (("agg_orders_daily", "day_bucket"), ("agg_orders_hourly", "hour_bucket"),
+                         ("agg_orders_minutely", "minute_bucket")):
+            await pools.summary_owner.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{tbl}_bucket ON {tbl} ({col}) "
+                f"INCLUDE (tenant_id, order_count, gross_sales_cents, net_sales_cents)"
+            )
+
+
+def all_source_pools() -> list[asyncpg.Pool]:
+    """Every distinct source-DB pool (one for the shared topology, one per tenant DB otherwise)."""
+    return list(pools.source_pools.values()) or ([pools.primary] if pools.primary else [])
 
 
 def primary_for_tenant(tenant_id: int) -> asyncpg.Pool:

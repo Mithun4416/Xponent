@@ -50,6 +50,10 @@ async def _record_latency(request: Request, call_next):
             rtstats.record((time.perf_counter() - t0) * 1000.0)
     except Exception:
         pass  # monitoring must never affect the response
+    # Dashboard files: make the browser revalidate every load (cheap 304 via ETag)
+    # so a rebuilt app.js / app.css is picked up without a hard refresh.
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
     return response
 
 

@@ -39,7 +39,7 @@ Step "Stopping CDC worker and API (if running)"
 docker compose stop cdc-worker agg-api *> $null
 
 Step "Starting databases (pg-primary, pg-summary, redis)"
-docker compose up -d pg-primary pg-summary redis-cache
+cmd /c "docker compose up -d pg-primary pg-summary redis-cache 2>&1"  # via cmd: PS 5.1 shows Docker progress (stderr) as red errors
 Check "docker compose up"
 
 for ($i = 0; $i -lt 60; $i++) {
@@ -83,7 +83,7 @@ Step "Bootstrapping rollups and creating the CDC slot"
 Check "Bootstrap"
 
 Step "Starting the CDC worker and query API"
-docker compose up -d cdc-worker agg-api
+cmd /c "docker compose up -d cdc-worker agg-api 2>&1"
 Check "docker compose up"
 
 for ($i = 0; $i -lt 30; $i++) {

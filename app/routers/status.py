@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter
 
 from app.core import config, limits, rtstats
-from app.core.db import pools
+from app.core.db import all_source_pools, pools
 
 router = APIRouter(prefix="/api/v1/status", tags=["Status"])
 
@@ -36,6 +36,17 @@ async def pipeline():
                 entry["reachable"] = False
         sources.append(entry)
 
+    # Every restaurant that exists, from each source DB's `tenants` table. In the
+    # shared topology one source holds ALL tenants (its tenant_id above is null),
+    # so the source list alone can't tell the dashboard which restaurants exist.
+    tenant_ids: set[int] = set()
+    for pool in all_source_pools():
+        try:
+            tenant_ids.update(r["tenant_id"] for r in await pool.fetch("SELECT tenant_id FROM tenants"))
+        except Exception:
+            pass
+    tenant_ids.update(s.tenant_id for s in pools.sources if s.tenant_id is not None)
+
     checkpoints = []
     now = datetime.now(timezone.utc)
     try:
@@ -52,6 +63,7 @@ async def pipeline():
         pass
 
     return {
+        "tenants": sorted(tenant_ids),
         "stages": [
             {"name": "Tenant source DB", "detail": sources},
             {"name": "CDC → Aggregation → Summary store", "detail": checkpoints},

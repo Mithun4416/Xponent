@@ -12,7 +12,7 @@ import asyncpg
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from app.core import config
-from app.core.db import pools
+from app.core.db import all_source_pools, pools
 from app.services import query_service
 
 router = APIRouter(prefix="/api/v1/org", tags=["Organization"])
@@ -73,7 +73,7 @@ async def overview(
     """Platform totals across all sellers + a per-seller leaderboard + fleet verification health."""
     _auth(x_admin_key)
     frm, to = _window(from_ts, to_ts)
-    data = await query_service.org_overview(_owner(), frm, to)
+    data = await query_service.org_overview(_owner(), frm, to, all_source_pools())
     return {"from": frm.isoformat(), "to": to.isoformat(), **data}
 
 
@@ -89,15 +89,18 @@ async def compare(
     frm, to = _window(from_ts, to_ts)
     owner = _owner()
     runs = 5
-    xp, xp_ms = await query_service.timed_best(
-        lambda: query_service.org_overview(owner, frm, to), runs)
+    source_pools = all_source_pools()
+    # Both engines answer the SAME question (platform totals over [frm, to)) and
+    # nothing else, so the timing is apples to apples.
+    acc, xp_ms = await query_service.timed_best(
+        lambda: query_service.org_totals(owner, source_pools, frm, to), runs)
     buckets = await query_service.rollup_rows_org(owner, frm, to)
-    source_pools = list(pools.source_pools.values()) or ([pools.primary] if pools.primary else [])
     (nv, rows, dbs), nv_ms = await query_service.timed_best(
         lambda: query_service.naive_org_scan(source_pools, frm, to), runs)
-    xt = xp["totals"]
+    xt = query_service.org_totals_summary(acc)
     match = (xt["order_count"] == nv["order_count"]
-             and round(xt["gross_sales"], 2) == round(nv["gross_sales"], 2))
+             and round(xt["gross_sales"], 2) == round(nv["gross_sales"], 2)
+             and round(xt["net_sales"], 2) == round(nv["net_sales"], 2))
     return {
         "scope": "org", "from": frm.isoformat(), "to": to.isoformat(), "runs": runs,
         "xponent": {"order_count": xt["order_count"], "gross_sales": xt["gross_sales"],

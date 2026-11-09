@@ -440,7 +440,7 @@ async function runCompare(scope){
       : `/api/v1/tenants/${state.tenant}/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
     const r=await jx(path,{headers:scope==="org"?adminHdr():sellerHdr()});
     renderCompare(grid,r);
-    msg.textContent=`Over ${rangeLabel().toLowerCase()} · identical numbers · best of ${r.runs||5} warm runs.`;
+    msg.textContent=`Over ${rangeLabel().toLowerCase()} · ${r.match?"identical numbers":"numbers differ"} · best of ${r.runs||5} warm runs.`;
   }catch(e){ grid.innerHTML=`<div class="err small">${e.message.includes("403")?"Operator key required.":e.message}</div>`; msg.textContent=""; }
   finally{ btn.disabled=false; }
 }
@@ -502,7 +502,9 @@ let sellerDD=null, rangeDD=null;
 async function loadSellers(){
   let ids=[];
   try{ const p=await jx("/api/v1/status/pipeline");
-    ids=(p.stages?.[0]?.detail||[]).map(s=>s.tenant_id).filter(x=>x!=null);
+    // Real restaurant list from the source DB(s); older APIs only had per-source ids.
+    ids=(p.tenants&&p.tenants.length)?p.tenants
+      :(p.stages?.[0]?.detail||[]).map(s=>s.tenant_id).filter(x=>x!=null);
   }catch{}
   if(!ids.length) ids=[1,2];
   state.sellerIds=[...new Set(ids)].sort((a,b)=>a-b);

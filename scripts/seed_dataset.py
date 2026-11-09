@@ -23,7 +23,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import psycopg
 
@@ -60,6 +60,10 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     ap.add_argument("--tenants", type=int, required=True)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--span-days", type=int, default=120)
+    ap.add_argument("--start", default="auto",
+                    help="first order date (YYYY-MM-DD, UTC). 'auto' (default) = now minus --span-days, "
+                         "so the data runs right up to today and 'last 7/30 days' views are populated. "
+                         "Pass a fixed date for byte-identical reruns.")
     ap.add_argument("--products-per-tenant", type=int, default=1000)
     ap.add_argument("--customers-per-tenant", type=int, default=5000)
     ap.add_argument("--items-per-order-max", type=int, default=5)
@@ -143,8 +147,13 @@ def main(argv: list[str]) -> int:
     a = _parse_args(argv)
     even = a.orders_per_tenant is not None
     rows = a.orders_per_tenant * a.tenants if even else a.rows
+    if a.start == "auto":
+        # Orders land in [start, start + span) = [now - span, now): up to today, never in the future.
+        start = (datetime.now(timezone.utc) - timedelta(days=a.span_days)).replace(microsecond=0)
+    else:
+        start = datetime.strptime(a.start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     p = GenParams(
-        rows=rows, tenants=a.tenants, even_split=even, seed=a.seed, span_days=a.span_days,
+        rows=rows, tenants=a.tenants, even_split=even, start=start, seed=a.seed, span_days=a.span_days,
         products_per_tenant=a.products_per_tenant, customers_per_tenant=a.customers_per_tenant,
         items_per_order_max=a.items_per_order_max, cancel_frac=a.cancel_frac,
         skew_alpha=a.skew_alpha, sub_hour_density=not a.no_sub_hour_density,
