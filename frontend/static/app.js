@@ -273,9 +273,12 @@ async function loadRows(){
     $("dbBody").innerHTML=r.rows.map(row=>`<tr>${row.map(v=>`<td>${v==null?'<span class="muted">null</span>':String(v)}</td>`).join("")}</tr>`).join("")
       ||`<tr><td class="muted">No rows.</td></tr>`;
     const start=r.offset+ (r.row_count?1:0), end=r.offset+r.row_count;
-    $("dbMeta").innerHTML=`Table <b>${r.table}</b> · ${r.columns.length} columns · ~${intf(r.estimated_total)} rows (estimated)`;
+    $("dbMeta").innerHTML=`Table <b>${r.table}</b> · ${r.columns.length} columns · ${r.estimated_total==null?"row count not yet estimated":`~${intf(r.estimated_total)} rows (estimated)`}`;
     $("dbPage").textContent=`Rows ${start}–${end}`;
-  }catch(e){ $("dbBody").innerHTML=`<tr><td class="err">${e.message}</td></tr>`; }
+  }catch(e){
+    $("dbHead").innerHTML=""; $("dbMeta").innerHTML=`Table <b>${state.db.table}</b>`; $("dbPage").textContent="";
+    $("dbBody").innerHTML=`<tr><td class="err">${e.message}</td></tr>`;
+  }
 }
 
 // ===================== SELLER: dashboard =====================

@@ -97,6 +97,14 @@ def _resolve(database: str):
     """Return (pool, allowed_tables) for a database id, or 404/503."""
     if database == "summary":
         return _summary_pool(), _SUMMARY_TABLES
+    if database == "source":
+        # Shared topology: one source DB for all tenants (listed with id "source").
+        for s in pools.sources:
+            if s.tenant_id is None:
+                pool = pools.source_pools.get(s.dsn)
+                if pool is None:
+                    raise HTTPException(status_code=503, detail="shared source DB not reachable")
+                return pool, _SOURCE_TABLES
     if database.startswith("source:"):
         try:
             tid = int(database.split(":", 1)[1])
@@ -146,5 +154,6 @@ async def rows(
         "columns": [{"name": c["column_name"], "type": c["data_type"]} for c in cols],
         "rows": [[_jsonable(r[c]) for c in col_names] for r in data],
         "row_count": len(data), "limit": limit, "offset": offset,
-        "estimated_total": int(est) if est is not None else None,
+        # reltuples is -1 for a table Postgres hasn't analyzed yet → unknown.
+        "estimated_total": int(est) if est is not None and est >= 0 else None,
     }
