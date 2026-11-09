@@ -26,7 +26,10 @@ command -v docker >/dev/null || { echo "Docker is required."; exit 1; }
 python3 -c "import psycopg" 2>/dev/null || {
   echo "Python dep 'psycopg' missing. Run:"; echo "  pip install -r scripts/requirements.txt"; exit 1; }
 
-say "1/6 Starting databases (pg-primary, pg-summary, redis)"
+say "1/7 Stopping CDC worker and API (if running)"
+docker compose stop cdc-worker agg-api 2>/dev/null || true
+
+say "2/7 Starting databases (pg-primary, pg-summary, redis)"
 docker compose up -d pg-primary pg-summary redis-cache
 
 say "waiting for Postgres to be healthy"
@@ -39,10 +42,19 @@ for i in $(seq 1 60); do
   [ "$i" -eq 60 ] && { echo "databases did not become healthy in time"; exit 1; }
 done
 
-say "2/6 Provisioning per-tenant source databases (tenant_1, tenant_2)"
+say "3/7 Dropping active replication slots and truncating data"
+# Drop all agg_slot* replication slots so COPY doesn't block on ObjectInUse
+for db in tenant_1 tenant_2; do
+  docker compose exec -T pg-primary psql -U postgres -d "$db" -c \
+    "SELECT pg_drop_replication_slot(slot_name) FROM pg_replication_slots WHERE slot_name LIKE 'agg_slot%';" 2>/dev/null || true
+  docker compose exec -T pg-primary psql -U postgres -d "$db" -c \
+    "TRUNCATE order_items, orders, customers, products, tenants CASCADE;" 2>/dev/null || true
+done
+
+say "4/7 Provisioning per-tenant source databases (tenant_1, tenant_2)"
 python3 scripts/provision_tenant_dbs.py --admin-dsn "$PRIMARY_ADMIN" --dbs tenant_1,tenant_2
 
-say "3/6 Seeding synthetic data (~${ROWS} orders per tenant, 2 tenants)"
+say "5/7 Seeding synthetic data (~${ROWS} orders per tenant, 2 tenants)"
 # Per-tenant-DB mode: each DB gets ONE tenant's catalog + ROWS orders. --assign-tenant
 # MUST pair with --tenants 1 (otherwise the tenants table is written once per generator
 # tenant → duplicate tenant_id PK violation).
@@ -51,13 +63,13 @@ python3 scripts/seed_dataset.py --rows "$ROWS" --tenants 1 --seed 42 --assign-te
 python3 scripts/seed_dataset.py --rows "$ROWS" --tenants 1 --seed 42 --assign-tenant 2 \
   --dsn postgresql://postgres:primary_password@localhost:5432/tenant_2 --manifest results/seed_t2.json
 
-say "4/6 Bootstrapping rollups at L0 (one CDC slot per tenant DB)"
+say "6/7 Bootstrapping rollups at L0 (one CDC slot per tenant DB)"
 python3 -m worker.bootstrap --summary-dsn "$SUMMARY_OWNER" --force
 
-say "5/6 Starting the CDC worker + query API"
+say "7/7 Starting the CDC worker + query API"
 docker compose up -d cdc-worker agg-api
 
-say "6/6 Waiting for the API"
+say "Waiting for the API"
 for i in $(seq 1 30); do
   if curl -fsS http://localhost:8000/api/v1/health >/dev/null 2>&1; then echo "   API up"; break; fi
   sleep 2

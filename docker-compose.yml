@@ -112,10 +112,8 @@ services:
       PRIMARY_DB_URL: "postgresql://postgres:primary_password@pg-primary:5432/primary_db"
       SUMMARY_DB_URL: "postgresql://agg_user:agg_password@pg-summary:5432/agg_db"
       CDC_SLOT_NAME: "agg_slot"
-      # Per-tenant-database topology: uncomment to stream one slot per tenant DB.
-      # (default unset = single shared source). Provision the DBs first:
-      #   python3 scripts/provision_tenant_dbs.py --admin-dsn .../postgres --dbs tenant_1,tenant_2
-      TENANT_SOURCES: '[{"tenant_id":1,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_1","slot":"agg_slot_t1"},{"tenant_id":2,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_2","slot":"agg_slot_t2"}]'
+      # Default topology: all tenants share primary_db and are separated by
+      # tenant_id. Set TENANT_SOURCES only when using dedicated source DBs.
     restart: on-failure
     deploy: { resources: { limits: { cpus: "1.0", memory: 1024M } } }
     networks: [ agg-net ]
@@ -144,8 +142,8 @@ services:
       OLLAMA_MODEL: "${OLLAMA_MODEL:-gemma3}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}" # only used when NLQ_PROVIDER=anthropic
       NLQ_MODEL: "claude-haiku-5-5"
-      # Must match the worker's TENANT_SOURCES so verify/repair/edge reads hit the right tenant DB.
-      TENANT_SOURCES: '[{"tenant_id":1,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_1","slot":"agg_slot_t1"},{"tenant_id":2,"dsn":"postgresql://postgres:primary_password@pg-primary:5432/tenant_2","slot":"agg_slot_t2"}]'
+      # Shared-primary default: PRIMARY_DB_URL is used for all tenants.
+      # Set TENANT_SOURCES only when using dedicated source DBs.
     extra_hosts:
       - "host.docker.internal:host-gateway" # lets the container reach host Ollama on Linux
     deploy: { resources: { limits: { cpus: "1.0", memory: 1024M } } }
